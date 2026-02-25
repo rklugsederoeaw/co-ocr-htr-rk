@@ -58,50 +58,50 @@ Multi-page documents store per-page transcriptions in `appState.data.pageTranscr
 
 ### Module Roles
 
-| Module | Singleton | Role |
-|--------|-----------|------|
-| `main.js` | -- | Entry point, wires everything together |
-| `state.js` | `appState` | Central state, event dispatch, auto-save |
-| `viewer.js` | `initViewer()` | OpenSeadragon document viewer, region overlays |
+| Module      | Singleton      | Role                                                     |
+| ----------- | -------------- | -------------------------------------------------------- |
+| `main.js`   | --             | Entry point, wires everything together                   |
+| `state.js`  | `appState`     | Central state, event dispatch, auto-save                 |
+| `viewer.js` | `initViewer()` | OpenSeadragon document viewer, region overlays           |
 | `editor.js` | `initEditor()` | Transcription table with inline editing, undo/redo, diff |
-| `ui.js` | `initUI()` | Header controls, keyboard shortcuts, guided workflow |
+| `ui.js`     | `initUI()`     | Header controls, keyboard shortcuts, guided workflow     |
 
 ### Components (`js/components/`)
 
-| Component | Singleton | Manages |
-|-----------|-----------|---------|
-| `upload.js` | `uploadManager` | File upload, IIIF import, demo loading |
-| `transcription.js` | `transcriptionManager` | LLM transcription calls, response parsing |
-| `validation.js` | `validationPanel` | Hybrid validation display, re-validation |
-| `dialogs.js` | `dialogManager` | Modal dialogs (API config, export, help) |
-| `context.js` | `contextManager` | Document context for enhanced transcription |
-| `description.js` | `descriptionPanel` | Illuminated initials visual description |
-| `thinking.js` | `thinkingPanel` | Real-time LLM thinking/reasoning display |
-| `batch-progress.js` | `batchProgress` | Batch operation progress panel |
+| Component           | Singleton              | Manages                                     |
+| ------------------- | ---------------------- | ------------------------------------------- |
+| `upload.js`         | `uploadManager`        | File upload, IIIF import, demo loading      |
+| `transcription.js`  | `transcriptionManager` | LLM transcription calls, response parsing   |
+| `validation.js`     | `validationPanel`      | Hybrid validation display, re-validation    |
+| `dialogs.js`        | `dialogManager`        | Modal dialogs (API config, export, help)    |
+| `context.js`        | `contextManager`       | Document context for enhanced transcription |
+| `description.js`    | `descriptionPanel`     | Illuminated initials visual description     |
+| `thinking.js`       | `thinkingPanel`        | Real-time LLM thinking/reasoning display    |
+| `batch-progress.js` | `batchProgress`        | Batch operation progress panel              |
 
 ### Services (`js/services/`)
 
-| Service | Singleton | Provides |
-|---------|-----------|----------|
-| `llm.js` | `llmService` | Multi-provider LLM abstraction (Gemini, OpenAI, Anthropic, Ollama, Mistral OCR) with optional streaming |
-| `validation.js` | `validationEngine` | Deterministic rules + LLM-as-judge hybrid validation |
-| `storage.js` | `storage` | localStorage (settings/prompts) + IndexedDB (projects/sessions/images/apiKeys) |
-| `export.js` | `exportService` | Export to PAGE-XML, TEI-XML, TXT, JSON, Markdown, ZIP |
-| `postprocess.js` | `postprocessService` | HTR post-processing orchestrator (Stage 2 + 3 pipeline) |
-| `samples.js` | `samplesService` | Demo document loading |
-| `parsers/page-xml.js` | `pageXMLParser` | PAGE-XML import/export |
-| `parsers/mets-xml.js` | `metsXMLParser` | METS-XML multi-page import |
+| Service               | Singleton            | Provides                                                                                                |
+| --------------------- | -------------------- | ------------------------------------------------------------------------------------------------------- |
+| `llm.js`              | `llmService`         | Multi-provider LLM abstraction (Gemini, OpenAI, Anthropic, Ollama, Mistral OCR) with optional streaming |
+| `validation.js`       | `validationEngine`   | Deterministic rules + LLM-as-judge hybrid validation                                                    |
+| `storage.js`          | `storage`            | localStorage (settings/prompts) + IndexedDB (projects/sessions/images/apiKeys)                          |
+| `export.js`           | `exportService`      | Export to PAGE-XML, TEI-XML, TXT, JSON, Markdown, ZIP                                                   |
+| `postprocess.js`      | `postprocessService` | HTR post-processing orchestrator (Stage 2 + 3 pipeline)                                                 |
+| `samples.js`          | `samplesService`     | Demo document loading                                                                                   |
+| `parsers/page-xml.js` | `pageXMLParser`      | PAGE-XML import/export                                                                                  |
+| `parsers/mets-xml.js` | `metsXMLParser`      | METS-XML multi-page import                                                                              |
 
 ### Utilities (`js/utils/`)
 
-| Utility | Export | Provides |
-|---------|--------|----------|
-| `constants.js` | named constants | Timeouts, feature flags, localStorage keys, default ratios |
-| `textFormatting.js` | `escapeHtml()` etc. | XSS-safe HTML escaping, text formatting helpers |
-| `panelResize.js` | `initPanelResize()` | Horizontal 3-column resize with drag, keyboard, persistence |
+| Utility               | Export                   | Provides                                                                     |
+| --------------------- | ------------------------ | ---------------------------------------------------------------------------- |
+| `constants.js`        | named constants          | Timeouts, feature flags, localStorage keys, default ratios                   |
+| `textFormatting.js`   | `escapeHtml()` etc.      | XSS-safe HTML escaping, text formatting helpers                              |
+| `panelResize.js`      | `initPanelResize()`      | Horizontal 3-column resize with drag, keyboard, persistence                  |
 | `validationResize.js` | `initValidationResize()` | Vertical resize for validation sub-sections (thinking/validation/LLM review) |
-| `dom.js` | DOM helpers | Element creation and query utilities |
-| `tooltips.js` | tooltip helpers | Info tooltip rendering |
+| `dom.js`              | DOM helpers              | Element creation and query utilities                                         |
+| `tooltips.js`         | tooltip helpers          | Info tooltip rendering                                                       |
 
 ### Data Flow
 
@@ -134,28 +134,28 @@ Copy `docs/config.local.example.js` to `docs/config.local.js` (gitignored) to au
 
 Design decisions are documented in `knowledge/`:
 
-| Question | Document |
-|----------|----------|
-| Project goals | [VISION.md](knowledge/VISION.md) |
-| Why categorical confidence? | [METHODOLOGY.md](knowledge/METHODOLOGY.md) |
-| Which models? | [MODEL-LANDSCAPE.md](knowledge/MODEL-LANDSCAPE.md) |
-| UI/UX spec | [DESIGN-SYSTEM.md](knowledge/DESIGN-SYSTEM.md) |
-| Technical architecture | [ARCHITECTURE.md](knowledge/ARCHITECTURE.md) |
-| Validation system | [VALIDATION.md](knowledge/VALIDATION.md) |
-| Data structures | [DATA-SCHEMA.md](knowledge/DATA-SCHEMA.md) |
-| HTR post-processing | [HTR-POSTPROCESSING.md](knowledge/HTR-POSTPROCESSING.md) |
+| Question                    | Document                                                 |
+| --------------------------- | -------------------------------------------------------- |
+| Project goals               | [VISION.md](knowledge/VISION.md)                         |
+| Why categorical confidence? | [METHODOLOGY.md](knowledge/METHODOLOGY.md)               |
+| Which models?               | [MODEL-LANDSCAPE.md](knowledge/MODEL-LANDSCAPE.md)       |
+| UI/UX spec                  | [DESIGN-SYSTEM.md](knowledge/DESIGN-SYSTEM.md)           |
+| Technical architecture      | [ARCHITECTURE.md](knowledge/ARCHITECTURE.md)             |
+| Validation system           | [VALIDATION.md](knowledge/VALIDATION.md)                 |
+| Data structures             | [DATA-SCHEMA.md](knowledge/DATA-SCHEMA.md)               |
+| HTR post-processing         | [HTR-POSTPROCESSING.md](knowledge/HTR-POSTPROCESSING.md) |
 
 ## Key Concepts
 
-| Concept | Meaning |
-|---------|---------|
-| Critical Expert in the Loop | Human validates, machine assists |
-| Categorical Confidence | sure/check-worthy/problematic (no percentages) |
-| Hybrid Validation | Deterministic rules (Validation) + LLM-as-judge (LLM Review) |
-| LLM Review Apply | One-click apply of LLM suggestions into the editor |
-| Prompt Profiles | Scenario-based prompt sets (Generic, Medieval Latin, Early Modern Letter) |
-| LLM Thinking Panel | Real-time streaming display of LLM reasoning process |
-| Custom Validation Prompt | Optional user-defined validation prompt |
+| Concept                     | Meaning                                                                   |
+| --------------------------- | ------------------------------------------------------------------------- |
+| Critical Expert in the Loop | Human validates, machine assists                                          |
+| Categorical Confidence      | sure/check-worthy/problematic (no percentages)                            |
+| Hybrid Validation           | Deterministic rules (Validation) + LLM-as-judge (LLM Review)              |
+| LLM Review Apply            | One-click apply of LLM suggestions into the editor                        |
+| Prompt Profiles             | Scenario-based prompt sets (Generic, Medieval Latin, Early Modern Letter) |
+| LLM Thinking Panel          | Real-time streaming display of LLM reasoning process                      |
+| Custom Validation Prompt    | Optional user-defined validation prompt                                   |
 
 ## Conventions
 
@@ -165,3 +165,19 @@ Design decisions are documented in `knowledge/`:
 - Comments explain "why", code explains "what"
 - **No emojis** in code or docs -- use `[x]`/`[~]`/`[ ]` for status, `(green)`/`(yellow)`/`(red)` for colors
 - Deployed from `docs/` folder to GitHub Pages
+
+# General Conventions
+
+I'm working in WSL2 terminal (no GUI editor). We use conda envs. I don't have passwordless sudo on the remote server. Keep these constraints in mind for all suggestions.
+
+- When debugging issues where code changes don't take effect, check whether the package is installed in editable/development mode (`pip install -e .`) before iterating on code fixes. A non-editable install means source changes won't be reflected at runtime.
+
+- This user does NOT use VS Code or any GUI editor. Do not create VS Code settings, launch configs, or assume any editor-specific setup. They work in WSL2 with terminal-based tools.
+
+- When running commands on remote servers or in restricted environments, check for sudo/permission constraints FIRST before attempting commands. If sudo requires a password, provide manual instructions immediately rather than failing repeatedly.
+
+- Primary language stack: Python, JavaScript (Vanilla JS), HTML/CSS, Markdown. When working on Python projects, check if a conda environment is active and use it. The user works with marker-pdf, custom web apps, and Linux server administration.
+
+- When exploring external APIs with curl, start conservatively (1-2 requests) and check for rate limiting or IP ban behavior before making multiple requests. Never retry failed auth patterns aggressively.
+
+- For long multi-step tasks, prefer committing/saving progress incrementally rather than doing everything in one session. If the prompt is getting long, suggest using /compact or splitting into a follow-up session.
