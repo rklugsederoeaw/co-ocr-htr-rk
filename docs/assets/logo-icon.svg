@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+
+  <!-- Outer decorative ring -->
+  <circle cx="256" cy="256" r="248" fill="none" stroke="#8a7e72" stroke-width="5"/>
+
+  <!-- Main circle - warm gold background -->
+  <circle cx="256" cy="256" r="230" fill="#b89850"/>
+
+  <!-- Lighter inner highlight circle for depth -->
+  <circle cx="256" cy="240" r="180" fill="#c9a85c" opacity="0.4"/>
+
+  <!-- Decorative inner border rings (manuscript-style) -->
+  <circle cx="256" cy="256" r="215" fill="none" stroke="#3d3229" stroke-width="3" opacity="0.3"/>
+  <circle cx="256" cy="256" r="205" fill="none" stroke="#3d3229" stroke-width="1.5" opacity="0.18"/>
+
+  <!-- Cardinal point dots (seal motif) -->
+  <circle cx="256" cy="44" r="5.5" fill="#3d3229" opacity="0.25"/>
+  <circle cx="256" cy="468" r="5.5" fill="#3d3229" opacity="0.25"/>
+  <circle cx="44" cy="256" r="5.5" fill="#3d3229" opacity="0.25"/>
+  <circle cx="468" cy="256" r="5.5" fill="#3d3229" opacity="0.25"/>
+
+  <!-- Small decorative diamonds (diagonal accents) -->
+  <polygon points="404,108 410,116 404,124 398,116" fill="#3d3229" opacity="0.18"/>
+  <polygon points="108,108 114,116 108,124 102,116" fill="#3d3229" opacity="0.18"/>
+  <polygon points="404,396 410,404 404,412 398,404" fill="#3d3229" opacity="0.18"/>
+  <polygon points="108,396 114,404 108,412 102,404" fill="#3d3229" opacity="0.18"/>
+
+  <!-- "R" letter - serif style -->
+  <g fill="#3d3229">
+    <!-- R: vertical stem -->
+    <rect x="118" y="145" width="28" height="222" rx="2"/>
+    <!-- R: top serif -->
+    <rect x="108" y="145" width="48" height="12" rx="2"/>
+    <!-- R: bowl (upper curve) -->
+    <path d="M146,145 L146,157 Q146,157 190,157 Q230,157 230,195 Q230,233 190,237 L146,237 L146,249 L185,249 Q252,249 252,195 Q252,145 185,145 Z"/>
+    <!-- R: middle junction -->
+    <rect x="108" y="237" width="90" height="12" rx="2"/>
+    <!-- R: diagonal leg -->
+    <polygon points="170,249 252,367 222,367 148,258"/>
+    <!-- R: bottom serif on stem -->
+    <rect x="108" y="355" width="48" height="12" rx="2"/>
+    <!-- R: bottom serif on leg -->
+    <rect x="216" y="355" width="48" height="12" rx="2"/>
+  </g>
+
+  <!-- "K" letter - serif style -->
+  <g fill="#3d3229">
+    <!-- K: vertical stem -->
+    <rect x="274" y="145" width="28" height="222" rx="2"/>
+    <!-- K: top serif -->
+    <rect x="264" y="145" width="48" height="12" rx="2"/>
+    <!-- K: upper diagonal arm -->
+    <polygon points="302,252 394,153 394,145 370,145 302,232"/>
+    <!-- K: lower diagonal leg -->
+    <polygon points="302,258 386,367 412,367 302,242"/>
+    <!-- K: top arm serif -->
+    <rect x="370" y="145" width="44" height="12" rx="2"/>
+    <!-- K: bottom leg serif -->
+    <rect x="374" y="355" width="44" height="12" rx="2"/>
+    <!-- K: bottom stem serif -->
+    <rect x="264" y="355" width="48" height="12" rx="2"/>
+  </g>
+
+  <!-- Ruling line under initials (manuscript motif) -->
+  <line x1="130" y1="390" x2="382" y2="390" stroke="#3d3229" stroke-width="2" opacity="0.2"/>
+</svg>
