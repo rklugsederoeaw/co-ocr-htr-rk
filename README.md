@@ -1,4 +1,4 @@
-# coOCR/HTR-rk
+# OCR/HTR & Image Description
 
 > **Forked from [DigitalHumanitiesCraft/co-ocr-htr](https://github.com/DigitalHumanitiesCraft/co-ocr-htr)** by [Christopher Pollin](https://github.com/chpollin) (DH Craft Graz).
 
@@ -411,7 +411,7 @@ Knowledge base in `knowledge/`:
 | Role            | Person                                                       |
 | --------------- | ------------------------------------------------------------ |
 | Original author | [Christopher Pollin](https://github.com/chpollin) (DH Craft) |
-| Fork maintainer | Robert Klugseder (OEAW / ACDH-CH)                            |
+| Fork maintainer | Robert Klugseder (OEAW / ACDH)                               |
 | AI assistance   | Claude Code (Anthropic) and Codex CLI (OpenAI)               |
 
 ---
