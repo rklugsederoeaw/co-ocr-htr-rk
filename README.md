@@ -211,6 +211,24 @@ Key changes:
 
 ---
 
+### Fork Milestone 12: Thinking Analysis (2026-02-27)
+
+Key changes:
+
+- 3-screen wizard dialog for analyzing LLM reasoning and generating optimized prompts (054172d)
+- Screen 1 (Capture): displays operation metadata, prompt used, thinking trace, and result with character counts
+- Screen 2 (Analysis): LLM meta-analysis of reasoning quality (5 evaluation dimensions) plus scholar feedback textarea
+- Screen 3 (Optimize): LLM-generated optimized prompt (editable) with one-click save to Prompt Library
+- Human-in-the-Loop at every step: no autonomous prompt modification
+- Exactly 2 additional LLM calls per analysis cycle (text-only, no image = cost-effective)
+- New `textQuery()` method in llm.js for text-only LLM calls (no image payload)
+- Thinking text accumulator in thinking panel with capture metadata
+- Analyze button (magnifying glass icon) appears after thinking completion
+- Resolved prompt capture in transcription, description, and validation components
+- Context-window protection via smart truncation of long thinking traces
+
+---
+
 <!-- CHANGELOG_END -->
 
 ---
@@ -225,6 +243,7 @@ This fork extends that base with additional persistence, workflow, and UX capabi
 - **LLM Thinking Panel**: real-time streaming of LLM reasoning (Gemini SSE, Anthropic Extended Thinking, Ollama `<think>` tags)
 - **Prompt profiles**: scenario-based prompt architecture (Generic, Medieval Latin, Early Modern Letter) with stage overrides
 - **Prompt Library**: persistent prompt database with categories, tags, seeding from built-in profiles, and Load/Save integration in all workflow dialogs
+- **Thinking Analysis**: 3-step wizard for analyzing LLM reasoning traces and generating optimized prompts with Human-in-the-Loop feedback
 - **HTR Post-Processing**: multi-stage normalization pipeline (Stage 2 + 3) with confidence/marker canonicalization (feature-flagged)
 - **Import paths**: image upload, PAGE-XML, METS-XML, IIIF manifests
 - **Export formats**: TXT, JSON, Markdown, PAGE-XML, TEI-XML, ZIP (multi-page)
