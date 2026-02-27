@@ -2307,7 +2307,7 @@ kbd {
 
 /* Picker popup for "Load from Library" */
 .prompt-picker-popup {
-  position: fixed;
+  position: absolute;
   z-index: 10000;
   background: var(--bg-secondary);
   border: 1px solid var(--border-default);

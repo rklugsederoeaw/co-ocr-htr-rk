@@ -369,18 +369,12 @@ class PromptLibraryManager {
         ? { top: 0, left: 0 }
         : parentDialog.getBoundingClientRect();
 
-      popup.style.position = 'fixed';
-      popup.style.top = `${rect.top}px`;
-      popup.style.left = `${rect.right + 8}px`;
-
-      // If off-screen right, show on left side
-      if (rect.right + 300 > window.innerWidth) {
-        popup.style.left = `${Math.max(8, rect.left - 300)}px`;
-      }
-      // If off-screen bottom, adjust
-      if (rect.top + 260 > window.innerHeight) {
-        popup.style.top = `${Math.max(8, window.innerHeight - 260)}px`;
-      }
+      // Use absolute positioning relative to parent dialog
+      // (CSS transform on <dialog> breaks position:fixed for children)
+      popup.style.position = 'absolute';
+      // Position overlaying the textarea, aligned left
+      popup.style.top = `${rect.top - parentRect.top}px`;
+      popup.style.left = `${rect.left - parentRect.left}px`;
     }
 
     parentDialog.appendChild(popup);
