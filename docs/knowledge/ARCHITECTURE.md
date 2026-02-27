@@ -58,8 +58,10 @@ System design for coOCR/HTR. Client-only, no backend.
 
 ```
 docs/
-├── index.html              # Entry Point + OpenSeadragon CDN
+├── index.html              # Entry Point (CSP meta tag)
 ├── favicon.png
+├── sw.js                   # Service Worker (offline caching)
+├── manifest.json           # PWA manifest
 ├── css/
 │   ├── variables.css       # Design System Tokens (60+ vars)
 │   ├── styles.css          # Entry point with @imports
@@ -69,28 +71,55 @@ docs/
 │   ├── dialogs.css         # Dialog system
 │   ├── editor.css          # Transcription editor
 │   ├── viewer.css          # OpenSeadragon viewer styles
-│   └── validation.css      # Validation panel
+│   ├── validation.css      # Validation panel
+│   └── pages.css           # Static pages (help, about)
 ├── js/
-│   ├── main.js             # Initialization, Workflow (~300 LOC)
-│   ├── state.js            # Central State with EventTarget (~450 LOC)
-│   ├── viewer.js           # OpenSeadragon Viewer (~520 LOC)
+│   ├── main.js             # Initialization, Workflow
+│   ├── state.js            # Central State with EventTarget
+│   ├── viewer.js           # OpenSeadragon Viewer
 │   ├── editor.js           # Flexible Editor (lines/grid)
 │   ├── ui.js               # UI Interactions
+│   ├── pwa.js              # PWA lifecycle management
+│   ├── pwa-init.js         # PWA bootstrap (extracted from inline)
 │   ├── components/
 │   │   ├── dialogs.js      # Dialog Manager
 │   │   ├── upload.js       # Upload Component
 │   │   ├── transcription.js# Transcription UI
 │   │   ├── validation.js   # Validation Panel
+│   │   ├── context.js      # Document Context Manager
+│   │   ├── description.js  # Visual Description Panel
+│   │   ├── thinking.js     # LLM Thinking/Reasoning Display
+│   │   ├── thinkingAnalysis.js # Thinking Analysis Wizard
+│   │   ├── promptLibrary.js# Persistent Prompt Library
 │   │   └── batch-progress.js # Batch Progress Panel
-│   └── services/
-│       ├── llm.js          # Multi-Provider LLM Service
-│       ├── storage.js      # localStorage + IndexedDB storage service
-│       ├── validation.js   # Validation Engine
-│       ├── export.js       # Export Service (incl. PAGE-XML, ZIP)
-│       ├── samples.js      # Demo Loader
-│       └── parsers/
-│           ├── page-xml.js # PAGE-XML Parser
-│           └── mets-xml.js # METS-XML Parser
+│   ├── services/
+│   │   ├── llm.js          # Multi-Provider LLM Service
+│   │   ├── storage.js      # localStorage + IndexedDB storage service
+│   │   ├── validation.js   # Validation Engine
+│   │   ├── export.js       # Export Service (PAGE-XML, TEI, ZIP)
+│   │   ├── project-io.js   # Project Import/Export (.coocr)
+│   │   ├── postprocess.js  # HTR Post-Processing Pipeline
+│   │   ├── samples.js      # Demo Loader
+│   │   └── parsers/
+│   │       ├── page-xml.js # PAGE-XML Parser
+│   │       └── mets-xml.js # METS-XML Parser
+│   └── utils/
+│       ├── constants.js    # Feature flags, timeouts, keys
+│       ├── dom.js          # DOM helper utilities
+│       ├── textFormatting.js # XSS-safe escaping
+│       ├── panelResize.js  # Horizontal 3-column resize
+│       ├── validationResize.js # Vertical validation resize
+│       └── tooltips.js     # Info tooltip rendering
+├── vendor/                 # Vendored dependencies (no CDN)
+│   ├── openseadragon/
+│   │   ├── openseadragon.min.js    # OpenSeadragon 4.1
+│   │   ├── openseadragon-svg-overlay.js
+│   │   └── images/         # 36 OSD button images
+│   ├── jszip.min.js        # JSZip (ZIP export/import)
+│   ├── marked.min.js       # Marked (Markdown rendering)
+│   └── fonts/
+│       ├── fonts.css        # @font-face declarations
+│       └── *.woff2          # Inter + JetBrains Mono
 ├── samples/
 │   ├── index.json          # Sample Manifest
 │   └── raitbuch/           # Demo Data
@@ -98,7 +127,10 @@ docs/
     ├── llm.test.js
     ├── page-xml.test.js
     ├── export.test.js
-    └── validation.test.js
+    ├── validation.test.js
+    ├── project-io.test.js
+    ├── state.test.js
+    └── e2e/                # Playwright E2E tests
 ```
 
 ## Core Modules
@@ -214,7 +246,7 @@ IIIF-compatible image viewer with SVG overlay for region synchronization.
 
 **Implementation:** [viewer.js](../docs/js/viewer.js)
 
-**Dependencies:** OpenSeadragon 4.1 + SVG Overlay Plugin (loaded via CDN)
+**Dependencies:** OpenSeadragon 4.1 + SVG Overlay Plugin (vendored in `vendor/openseadragon/`)
 
 **Key Features:**
 | Feature | Description |
@@ -398,7 +430,39 @@ localStorage is not used for API key material.
 
 ### Content Security Policy
 
-CSP restricts connections to known LLM API endpoints (Gemini, OpenAI, Anthropic) plus localhost for Ollama. Scripts and styles limited to same-origin.
+A strict CSP is enforced via `<meta http-equiv="Content-Security-Policy">` in `index.html`:
+
+| Directive | Value | Rationale |
+|-----------|-------|-----------|
+| `default-src` | `'self'` | Baseline: same-origin only |
+| `script-src` | `'self'` | No inline scripts, no CDN scripts |
+| `style-src` | `'self' 'unsafe-inline'` | Self + inline for dynamic CSS (OSD) |
+| `img-src` | `'self' data: blob: https://*.iiif.io ...` | Local images + IIIF servers |
+| `connect-src` | `'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai http://localhost:* https://*.iiif.io ...` | LLM APIs + Ollama + IIIF |
+| `font-src` | `'self'` | Vendored fonts only |
+| `object-src` | `'none'` | No plugins |
+| `base-uri` | `'self'` | Prevents base-tag hijacking |
+| `worker-src` | `'self'` | Service worker same-origin |
+
+**CSP compliance required:** All scripts must be external files (`src=` attribute). No `onclick`, no inline `<script>` blocks. Event handlers are attached in JavaScript via `addEventListener`.
+
+### Vendored Dependencies
+
+All external libraries are vendored in `docs/vendor/` to eliminate CDN dependencies. This enables:
+- **Offline operation** via Service Worker caching
+- **CSP `script-src 'self'`** without `unsafe-inline` or CDN allowlisting
+- **Supply-chain hardening** -- no runtime dependency on third-party CDNs
+
+| Library | Path | Version |
+|---------|------|---------|
+| OpenSeadragon | `vendor/openseadragon/openseadragon.min.js` | 4.1 |
+| OSD SVG Overlay | `vendor/openseadragon/openseadragon-svg-overlay.js` | -- |
+| JSZip | `vendor/jszip.min.js` | 3.x |
+| Marked | `vendor/marked.min.js` | 15.x |
+| Inter (font) | `vendor/fonts/*.woff2` | Variable |
+| JetBrains Mono | `vendor/fonts/*.woff2` | Variable |
+
+The Service Worker (`sw.js`, cache version `coocr-v2`) pre-caches all vendor assets on install for full offline support.
 
 ## Technology Decisions
 
@@ -409,6 +473,8 @@ CSP restricts connections to known LLM API endpoints (Gemini, OpenAI, Anthropic)
 | Fetch API | Native, sufficient for REST |
 | ES6 Modules | Native browser support, no bundler |
 | CSS Custom Properties | Theming without preprocessor |
+| Vendored dependencies | Offline capability, CSP compliance, supply-chain security |
+| CSP via meta tag | No server config needed (GitHub Pages static hosting) |
 
 ## Performance Goals
 
