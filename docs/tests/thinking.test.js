@@ -58,7 +58,7 @@ describe('ThinkingPanel', () => {
             expect(section.classList.contains('thinking-active')).toBe(true);
         });
 
-        it('should set the header with operation and provider info', () => {
+        it('should set the header with operation label and LLM Thinking suffix', () => {
             appState.emitThinkingStart({
                 operation: 'transcription',
                 provider: 'gemini',
@@ -66,7 +66,7 @@ describe('ThinkingPanel', () => {
             });
 
             const header = document.getElementById('thinkingHeader');
-            expect(header.textContent).toBe('Transcription -- gemini/gemini-3-flash');
+            expect(header.textContent).toBe('Transcription -- LLM Thinking');
         });
 
         it('should clear previous content on new start', () => {
