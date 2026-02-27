@@ -38,6 +38,7 @@ This fork is maintained by **Robert Klugseder** (Austrian Academy of Sciences, A
 - **HTR Post-Processing Pipeline** (feature-flagged) with multi-stage normalization
 - **LLM Thinking Panel** -- real-time streaming of LLM reasoning (Gemini, Anthropic, Ollama)
 - **Prompt Profiles** -- scenario-based prompt architecture for different document types
+- **Prompt Library** -- persistent prompt database (IndexedDB) for saving, organizing, and reusing prompts across all workflows
 - **Project export/import** (.coocr archive) for cross-browser/device transfer with optional encrypted API keys
 - **Improved UX** with custom dialogs, storage quota display, and tooltips
 
@@ -194,6 +195,22 @@ Key changes:
 
 ---
 
+### Fork Milestone 11: Prompt Library (2026-02-27)
+
+Key changes:
+
+- Persistent Prompt Library stored in IndexedDB (new `prompts` store, schema v2) (a9497f4)
+- Header button (book icon) opens a full-screen dialog for browsing, creating, editing, duplicating, and deleting prompts
+- Five prompt categories: Transcription (Stage 1), Description, LLM Review, Stage 2 (Paleographic), Stage 3 (Philological)
+- Automatic seeding: the three built-in Prompt Profiles (Generic, Medieval Latin, Early Modern Letter) are seeded as 9 library entries on first use
+- Built-in prompts are protected from deletion (duplicate-and-edit workflow)
+- "Load from Library" and "Save to Library" buttons in all five workflow textareas (Transcription, Description, LLM Review, Stage 2, Stage 3)
+- Category-filtered picker popup for quick prompt selection within workflow dialogs (157fa8e)
+- Clickable rows for direct editing, full-width edit form (8d47013, ce366f5)
+- Optional tags (comma-separated) for organizing prompts
+
+---
+
 <!-- CHANGELOG_END -->
 
 ---
@@ -207,6 +224,7 @@ This fork extends that base with additional persistence, workflow, and UX capabi
 - **Hybrid validation**: deterministic Validation + LLM Review with apply-to-editor
 - **LLM Thinking Panel**: real-time streaming of LLM reasoning (Gemini SSE, Anthropic Extended Thinking, Ollama `<think>` tags)
 - **Prompt profiles**: scenario-based prompt architecture (Generic, Medieval Latin, Early Modern Letter) with stage overrides
+- **Prompt Library**: persistent prompt database with categories, tags, seeding from built-in profiles, and Load/Save integration in all workflow dialogs
 - **HTR Post-Processing**: multi-stage normalization pipeline (Stage 2 + 3) with confidence/marker canonicalization (feature-flagged)
 - **Import paths**: image upload, PAGE-XML, METS-XML, IIIF manifests
 - **Export formats**: TXT, JSON, Markdown, PAGE-XML, TEI-XML, ZIP (multi-page)
@@ -328,6 +346,60 @@ coOCR/HTR-rk allows configuring a separate model for validation and LLM review, 
 
 ---
 
+### Prompt Library
+
+The Prompt Library provides a persistent database for storing, organizing, and reusing prompts across all workflows. Prompts are stored in the browser's IndexedDB and survive page reloads, browser restarts, and session changes.
+
+**Open the Prompt Library:**
+
+1. Click the **book icon** in the header bar (between Projects and Settings)
+2. The library dialog shows all saved prompts with name, category, and action buttons
+3. Use the **category filter** dropdown to show only prompts of a specific type
+
+**Categories:**
+
+- **Transcription (Stage 1)** -- prompts for initial LLM transcription
+- **Description** -- prompts for illuminated initials / image description
+- **LLM Review** -- custom validation prompts
+- **Stage 2 (Paleographic)** -- paleographic review override prompts
+- **Stage 3 (Philological)** -- philological review override prompts
+
+**Create a new prompt:**
+
+1. Click **"+ New Prompt"** in the library toolbar
+2. Enter a name, select a category, add optional tags (comma-separated), and write the prompt text
+3. Click **"Save"**
+
+**Edit an existing prompt:**
+
+1. Click anywhere on the prompt row to open the edit form
+2. Modify name, category, tags, or text
+3. Click **"Save"** to update, or **"Cancel"** to discard changes
+
+**Duplicate / Delete:**
+
+- **Duplicate** (copy icon): creates a copy with "(copy)" appended to the name
+- **Delete** (trash icon): removes user-created prompts (requires confirmation)
+- Built-in prompts (seeded from Prompt Profiles) cannot be deleted -- duplicate them to create an editable copy
+
+**Load a prompt into a workflow:**
+
+1. In any workflow dialog (Transcribe, Describe, Validate), click **"Load from Library"** next to the prompt textarea
+2. A picker popup shows only prompts matching the current category
+3. Click a prompt to load its text into the textarea
+
+**Save the current prompt to the library:**
+
+1. Write or modify a prompt in any workflow textarea
+2. Click **"Save to Library"** next to the textarea
+3. Enter a name for the prompt -- it is saved with the matching category automatically
+
+**Built-in prompts (seeding):**
+
+On first use, the library is automatically populated with 9 prompts from the three built-in Prompt Profiles (Generic Historical Document, Medieval Latin Manuscript, Early Modern Letter), each with Stage 1, Stage 2, and Stage 3 variants. These serve as starting templates and can be duplicated for customization.
+
+---
+
 ### Responsive and Resizable Panels
 
 The 3-column layout (Viewer | Editor | Validation) is freely scalable.
@@ -392,11 +464,12 @@ Primary runtime network traffic is LLM API calls and optional IIIF resources.
   - `coocr:descriptionPrompt`
   - `coocr:validationPrompt`
   - `coocr:activeProjectId`
-- `IndexedDB` (`coocr-htr`) stores structured project data:
+- `IndexedDB` (`coocr-htr`, schema v2) stores structured project data:
   - `projects`
   - `sessions`
   - `images`
   - `apiKeys` (optional, only when user enables persistence)
+  - `prompts` (Prompt Library entries with category, tags, timestamps)
 
 ### LLM and Validation Flow
 
