@@ -7,6 +7,9 @@
     <meta name="description" content="coOCR/HTR Help - User guide for the historical document transcription workbench">
     <title>Help - coOCR/HTR</title>
 
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self';">
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
@@ -232,7 +235,7 @@ php -S localhost:8000</code></pre>
                 <h2 class="section-title">Troubleshooting</h2>
                 <div class="faq-list">
                     <div class="faq-item">
-                        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        <button class="faq-question">
                             Why is my transcription empty or wrong?
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M6 9l6 6 6-6"/>
@@ -243,7 +246,7 @@ php -S localhost:8000</code></pre>
                         </div>
                     </div>
                     <div class="faq-item">
-                        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        <button class="faq-question">
                             How do I use PAGE-XML files?
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M6 9l6 6 6-6"/>
@@ -254,7 +257,7 @@ php -S localhost:8000</code></pre>
                         </div>
                     </div>
                     <div class="faq-item">
-                        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        <button class="faq-question">
                             Are my API keys stored securely?
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M6 9l6 6 6-6"/>
@@ -265,7 +268,7 @@ php -S localhost:8000</code></pre>
                         </div>
                     </div>
                     <div class="faq-item">
-                        <button class="faq-question" onclick="this.parentElement.classList.toggle('open')">
+                        <button class="faq-question">
                             Can I use this offline?
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M6 9l6 6 6-6"/>
@@ -286,6 +289,7 @@ php -S localhost:8000</code></pre>
         </footer>
 
     </div>
+    <script src="js/help-init.js"></script>
 </body>
 
 </html>
