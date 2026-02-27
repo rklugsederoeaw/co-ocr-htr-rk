@@ -419,6 +419,55 @@ On first use, the library is automatically populated with 9 prompts from the thr
 
 ---
 
+### Thinking Analysis
+
+The Thinking Analysis feature provides a structured workflow for evaluating LLM reasoning and generating improved prompts. It captures the model's thinking trace from transcription, description, or validation operations and guides you through a 3-step analysis cycle.
+
+**Prerequisite:** The LLM provider must support reasoning/thinking output (Gemini with SSE streaming, Anthropic with Extended Thinking, or Ollama with `<think>` tags). The Analyze button only appears when thinking data is available.
+
+**Step 1: Capture**
+
+1. Run a transcription, description, or validation operation with a thinking-capable provider
+2. After the operation completes, the **Thinking Panel** shows the reasoning trace
+3. Click the **magnifying glass icon** in the Thinking Panel header to open the Analysis dialog
+4. Review the captured data: operation metadata (provider, model, duration), the prompt used, the thinking trace, and the final result
+5. Click **"Analyze Reasoning"** to proceed (makes one text-only LLM call)
+
+**Step 2: Analysis + Scholar Feedback**
+
+1. The LLM analyzes the reasoning quality across five dimensions:
+   - **Reasoning Structure** -- systematic approach, alternatives considered, confidence levels
+   - **Domain Awareness** -- script-specific confusions, abbreviations, ligatures
+   - **Prompt Adherence** -- instructions followed, output format respected
+   - **Gaps** -- aspects not addressed, difficult sections skipped
+   - **Strengths** -- effective strategies, what worked well
+2. Read the analysis and add your own assessment in the **"Your Assessment"** textarea
+3. Your domain expertise (e.g., "The model missed the n/u distinction in line 3") directly shapes the optimized prompt
+4. Click **"Generate Optimized Prompt"** to proceed (makes one text-only LLM call)
+
+**Step 3: Optimized Prompt + Save**
+
+1. The LLM generates an improved prompt incorporating the analysis findings and your feedback
+2. The prompt is displayed in an **editable textarea** -- review and refine as needed
+3. Expand **"Original prompt for comparison"** to see the original side-by-side
+4. Fill in the save fields:
+   - **Name**: descriptive name (pre-filled, e.g., "Transcription (optimized)")
+   - **Category**: auto-selected based on the operation
+   - **Tags**: comma-separated labels (pre-filled with "optimized, thinking-analysis")
+5. Click **"Save to Prompt Library"** to persist the optimized prompt
+
+**Using optimized prompts:**
+
+After saving, the optimized prompt is available in the Prompt Library and can be loaded into any workflow dialog via the **"Load from Library"** button. This creates an iterative improvement cycle: transcribe, analyze reasoning, optimize prompt, transcribe again with the improved prompt.
+
+**Design principles:**
+
+- **Human-in-the-Loop**: no autonomous prompt modification -- you review and approve at every step
+- **Cost-effective**: exactly 2 text-only LLM calls per cycle (no image payload)
+- **Non-destructive**: the original prompt is preserved; optimized prompts are saved as new entries
+
+---
+
 ### Responsive and Resizable Panels
 
 The 3-column layout (Viewer | Editor | Validation) is freely scalable.
