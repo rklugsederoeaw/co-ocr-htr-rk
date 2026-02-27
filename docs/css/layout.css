@@ -579,8 +579,8 @@ body:has(.wip-banner:not([hidden])) .app-container {
   position: absolute;
   top: 56px;
   bottom: 36px;
-  width: 12px;
-  margin-left: -6px;
+  width: 20px;
+  margin-left: -10px;
   cursor: col-resize;
   z-index: var(--z-overlay);
   display: flex;
@@ -588,26 +588,32 @@ body:has(.wip-banner:not([hidden])) .app-container {
   justify-content: center;
   user-select: none;
   touch-action: none;
+  transition: background var(--transition-fast);
+}
+
+.panel-resize-handle:hover {
+  background: rgba(74, 124, 155, 0.07);
 }
 
 /* Visual grip indicator */
 .panel-resize-handle::after {
   content: '';
-  width: 2px;
-  height: 32px;
-  border-radius: 1px;
-  background: var(--border-default);
+  width: 4px;
+  height: 48px;
+  border-radius: 2px;
+  background: rgba(61, 50, 41, 0.25);
   transition: all var(--transition-fast);
 }
 
-.panel-resize-handle:hover::after,
-.panel-resize-handle.dragging::after {
-  height: 48px;
+.panel-resize-handle:hover::after {
+  height: 64px;
   background: var(--accent-primary);
+  box-shadow: 0 0 6px rgba(74, 124, 155, 0.3);
 }
 
 .panel-resize-handle.dragging::after {
   height: 100%;
+  background: var(--accent-primary);
 }
 
 /* Cursor override during drag */
