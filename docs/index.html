@@ -225,6 +225,15 @@
                                 </svg>
                                 <span>Load IIIF</span>
                             </button>
+                            <div class="upload-menu-divider"></div>
+                            <button class="upload-menu-item" id="btnImportProject">
+                                <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                <span>Import Project (.coocr)</span>
+                            </button>
                         </div>
                         <!-- Samples Submenu (shown when Demo is hovered/clicked) -->
                         <div class="samples-menu" id="samplesMenu"></div>
@@ -1310,6 +1319,48 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </dialog>
+
+    <!-- Export Project Dialog -->
+    <dialog id="exportProjectDialog" class="dialog export-project-dialog">
+        <div class="dialog-header">
+            <h2 class="dialog-title">Export Project</h2>
+            <button class="dialog-close" data-close-dialog aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="export-project-info">
+                <div class="form-group">
+                    <label>Project</label>
+                    <span id="exportProjectName" class="export-project-value">--</span>
+                </div>
+                <div class="form-group">
+                    <label>Pages</label>
+                    <span id="exportProjectPages" class="export-project-value">--</span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="exportIncludeKeys">
+                    <span>Include API keys (encrypted)</span>
+                </label>
+            </div>
+            <div id="exportKeyPasswordGroup" class="form-group hidden">
+                <label for="exportKeyPassword">Password</label>
+                <input type="password" id="exportKeyPassword" class="form-input" placeholder="Enter password" autocomplete="new-password">
+                <label for="exportKeyPasswordConfirm" class="mt-sm">Confirm password</label>
+                <input type="password" id="exportKeyPasswordConfirm" class="form-input" placeholder="Confirm password" autocomplete="new-password">
+                <span class="input-hint">Password is needed to decrypt API keys on import.</span>
+            </div>
+        </div>
+        <div class="dialog-actions">
+            <button class="btn btn-ghost" data-close-dialog>Cancel</button>
+            <button class="btn btn-primary" id="btnExportProjectConfirm">Export Project</button>
         </div>
     </dialog>
 

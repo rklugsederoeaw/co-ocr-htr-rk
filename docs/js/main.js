@@ -29,6 +29,7 @@ import { pageXMLParser } from './services/parsers/page-xml.js';
 import { samplesService } from './services/samples.js';
 import { appState } from './state.js';
 import { escapeHtml } from './utils/textFormatting.js';
+import { COOCR_FILE_EXTENSION } from './utils/constants.js';
 // Side-effect import: initializes tooltip positioning
 import './utils/tooltips.js';
 import { initPanelResize } from './utils/panelResize.js';
@@ -325,6 +326,13 @@ async function showProjectListDialog(projects) {
                     <div class="project-card-header">
                         <span class="project-card-name">${escapeHtml(name)}</span>
                         <div class="project-card-actions">
+                            <button class="project-export-btn icon-btn" data-export="${escapeHtml(p.id)}" data-export-name="${escapeHtml(name)}" data-export-pages="${p.pageCount || 0}" title="Export">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </button>
                             <button class="project-rename-btn icon-btn" data-rename="${escapeHtml(p.id)}" title="Rename">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
                                     <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
@@ -368,6 +376,16 @@ async function showProjectListDialog(projects) {
             const card = e.target.closest('.project-card');
             const renameBtn = e.target.closest('.project-rename-btn');
             const deleteBtn = e.target.closest('.project-delete-btn');
+            const exportBtn = e.target.closest('.project-export-btn');
+
+            if (exportBtn) {
+                e.stopPropagation();
+                const projectId = exportBtn.dataset.export;
+                const projectName = exportBtn.dataset.exportName;
+                const pageCount = parseInt(exportBtn.dataset.exportPages, 10) || 0;
+                dialogManager.openExportProjectDialog(projectId, projectName, pageCount);
+                return;
+            }
 
             if (deleteBtn) {
                 e.stopPropagation();
@@ -422,7 +440,7 @@ async function showProjectListDialog(projects) {
                 return;
             }
 
-            if (card && !renameBtn && !deleteBtn) {
+            if (card && !renameBtn && !deleteBtn && !exportBtn) {
                 const projectId = card.dataset.projectId;
                 dialog.close();
                 dialog.remove();
@@ -696,6 +714,15 @@ async function initSamplesMenu() {
         dialogManager.openDialog('iiif');
     });
 
+    // Import Project button - open file picker for .coocr
+    const btnImportProject = document.getElementById('btnImportProject');
+    btnImportProject?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        uploadMenu.classList.remove('visible');
+        uploadDropdown?.classList.remove('open');
+        openImportFilePicker();
+    });
+
     // Prevent samples menu from closing when clicking inside it
     samplesMenu?.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -721,6 +748,32 @@ async function initSamplesMenu() {
             dialogManager.showToast(`Failed to load sample: ${error.message}`, 'error');
         }
     });
+}
+
+/**
+ * Open a file picker for .coocr import and handle the selected file
+ */
+function openImportFilePicker() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = COOCR_FILE_EXTENSION;
+    input.style.display = 'none';
+
+    input.addEventListener('change', async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+
+        dialogManager.showToast('Importing project...', 'info');
+        const result = await dialogManager.handleImportProject(file);
+        if (result) {
+            updateProjectDisplay();
+        }
+    });
+
+    document.body.appendChild(input);
+    input.click();
+    // Clean up after browser processes file selection
+    setTimeout(() => input.remove(), 60000);
 }
 
 /**

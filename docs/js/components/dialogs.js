@@ -61,6 +61,7 @@ class DialogManager {
         // Cache dialog elements
         this.dialogs.apiKey = getById('apiKeyDialog');
         this.dialogs.export = getById('exportDialog');
+        this.dialogs.exportProject = getById('exportProjectDialog');
         this.dialogs.settings = getById('settingsDialog');
         this.dialogs.help = getById('helpDialog');
         this.dialogs.iiif = getById('iiifDialog');
@@ -128,6 +129,9 @@ class DialogManager {
 
         // IIIF Dialog specific
         this.bindIIIFDialogEvents();
+
+        // Export Project Dialog specific
+        this.bindExportProjectDialogEvents();
 
         // Header button bindings
         this.bindHeaderButtons();
@@ -790,6 +794,223 @@ class DialogManager {
         if (errorEl) errorEl.style.display = 'none';
 
         this.iiifManifestData = null;
+    }
+
+    /**
+     * Bind Export Project Dialog specific events
+     */
+    bindExportProjectDialogEvents() {
+        const dialog = this.dialogs.exportProject;
+        if (!dialog) return;
+
+        const includeKeysCheckbox = getById('exportIncludeKeys');
+        const passwordGroup = getById('exportKeyPasswordGroup');
+        const exportBtn = getById('btnExportProjectConfirm');
+
+        // Toggle password fields when checkbox changes
+        if (includeKeysCheckbox && passwordGroup) {
+            includeKeysCheckbox.addEventListener('change', () => {
+                if (includeKeysCheckbox.checked) {
+                    passwordGroup.classList.remove('hidden');
+                } else {
+                    passwordGroup.classList.add('hidden');
+                }
+            });
+        }
+
+        // Export button click
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.handleExportProject());
+        }
+    }
+
+    /**
+     * Open the Export Project dialog for a given project ID.
+     * @param {string} projectId
+     * @param {string} projectName
+     * @param {number} pageCount
+     */
+    openExportProjectDialog(projectId, projectName, pageCount) {
+        this._exportProjectId = projectId;
+
+        const nameEl = getById('exportProjectName');
+        const pagesEl = getById('exportProjectPages');
+        const includeKeysCheckbox = getById('exportIncludeKeys');
+        const passwordGroup = getById('exportKeyPasswordGroup');
+        const passwordInput = getById('exportKeyPassword');
+        const passwordConfirm = getById('exportKeyPasswordConfirm');
+
+        if (nameEl) nameEl.textContent = projectName || '--';
+        if (pagesEl) pagesEl.textContent = pageCount ?? '--';
+
+        // Reset form state
+        if (includeKeysCheckbox) includeKeysCheckbox.checked = false;
+        if (passwordGroup) passwordGroup.classList.add('hidden');
+        if (passwordInput) passwordInput.value = '';
+        if (passwordConfirm) passwordConfirm.value = '';
+
+        this.openDialog('exportProject');
+    }
+
+    /**
+     * Handle export project action from dialog
+     */
+    async handleExportProject() {
+        const { projectIOService } = await import('../services/project-io.js');
+
+        const projectId = this._exportProjectId;
+        if (!projectId) {
+            this.showToast('No project selected for export', 'warning');
+            return;
+        }
+
+        const includeKeys = getById('exportIncludeKeys')?.checked || false;
+        let password = null;
+
+        if (includeKeys) {
+            const pw = getById('exportKeyPassword')?.value || '';
+            const pwConfirm = getById('exportKeyPasswordConfirm')?.value || '';
+
+            if (!pw) {
+                this.showToast('Please enter a password', 'warning');
+                return;
+            }
+            if (pw !== pwConfirm) {
+                this.showToast('Passwords do not match', 'warning');
+                return;
+            }
+            if (pw.length < 4) {
+                this.showToast('Password must be at least 4 characters', 'warning');
+                return;
+            }
+            password = pw;
+        }
+
+        try {
+            const result = await projectIOService.exportProject(projectId, {
+                includeApiKeys: includeKeys,
+                password
+            });
+            this.showToast(`Exported: ${result.filename}`, 'success');
+            this.closeDialog('exportProject');
+        } catch (error) {
+            console.error('[ExportProject] Export failed:', error);
+            this.showToast(`Export failed: ${error.message}`, 'error');
+        }
+    }
+
+    /**
+     * Handle import project from a .coocr file.
+     * @param {File} file
+     * @returns {Promise<{projectId: string, projectName: string}|null>}
+     */
+    async handleImportProject(file) {
+        const { projectIOService } = await import('../services/project-io.js');
+
+        try {
+            const result = await projectIOService.importProject(file, {
+                onConflict: async (existing, incoming) => {
+                    return this._showImportConflictDialog(existing, incoming);
+                },
+                onPasswordNeeded: async () => {
+                    return this._showPasswordPrompt();
+                }
+            });
+
+            if (result) {
+                this.showToast(`Imported: ${result.projectName}`, 'success');
+            }
+            return result;
+        } catch (error) {
+            console.error('[ImportProject] Import failed:', error);
+            this.showToast(`Import failed: ${error.message}`, 'error');
+            return null;
+        }
+    }
+
+    /**
+     * Show conflict resolution dialog during import.
+     * @returns {Promise<'replace'|'rename'|'cancel'>}
+     */
+    async _showImportConflictDialog(existing, incoming) {
+        return new Promise((resolve) => {
+            const dialog = document.createElement('dialog');
+            dialog.className = 'confirm-dialog glass-panel';
+
+            const existingDate = existing.updatedAt
+                ? new Date(existing.updatedAt).toLocaleString()
+                : 'unknown';
+            const incomingDate = incoming.updatedAt
+                ? new Date(incoming.updatedAt).toLocaleString()
+                : 'unknown';
+
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <span class="dialog-icon dialog-icon-warning">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                    </span>
+                    <h3>Project already exists</h3>
+                </div>
+                <div class="dialog-body">
+                    <p>A project named "${escapeHtml(incoming.name)}" already exists.</p>
+                    <div class="import-conflict-comparison">
+                        <div class="conflict-column">
+                            <strong>Existing</strong>
+                            <span>${existing.pageCount || 0} pages</span>
+                            <span>${existingDate}</span>
+                        </div>
+                        <div class="conflict-column">
+                            <strong>Incoming</strong>
+                            <span>${incoming.pageCount || 0} pages</span>
+                            <span>${incomingDate}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dialog-actions">
+                    <button class="btn btn-ghost" data-action="cancel">Cancel</button>
+                    <button class="btn btn-ghost" data-action="rename">Keep both</button>
+                    <button class="btn btn-primary" data-action="replace">Replace existing</button>
+                </div>
+            `;
+
+            const cleanup = (result) => {
+                dialog.close();
+                dialog.remove();
+                resolve(result);
+            };
+
+            dialog.addEventListener('click', (e) => {
+                const action = e.target.dataset?.action;
+                if (action) cleanup(action);
+            });
+
+            dialog.addEventListener('cancel', (e) => {
+                e.preventDefault();
+                cleanup('cancel');
+            });
+
+            document.body.appendChild(dialog);
+            dialog.showModal();
+        });
+    }
+
+    /**
+     * Show password prompt for encrypted API keys during import.
+     * @returns {Promise<string|null>}
+     */
+    async _showPasswordPrompt() {
+        return this.showPrompt(
+            'Encrypted API Keys',
+            'This project contains encrypted API keys. Enter the password to decrypt them, or cancel to skip.',
+            '',
+            'Decrypt',
+            'Skip',
+            { icon: 'question' }
+        );
     }
 
     /**

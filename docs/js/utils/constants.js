@@ -241,3 +241,19 @@ export const FEATURE_FLAGS = {
   postprocessPipelineV1: false,
   thinkingPanel: true
 };
+
+// =============================================================================
+// PROJECT IO CONSTANTS
+// =============================================================================
+
+/** .coocr file format version */
+export const COOCR_FORMAT_VERSION = '1.0';
+
+/** .coocr file extension */
+export const COOCR_FILE_EXTENSION = '.coocr';
+
+/** MIME type for .coocr files (ZIP-based) */
+export const COOCR_MIME_TYPE = 'application/zip';
+
+/** PBKDF2 iterations for API key encryption */
+export const PBKDF2_ITERATIONS = 100_000;
