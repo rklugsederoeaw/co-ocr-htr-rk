@@ -169,7 +169,7 @@ Samples dropdown in header ("Demo" button), viewer empty state with icon/title/d
 
 ### Deployment
 
-Local test with `npx serve docs -l 3000`. All features functional. Live URL: http://dhcraft.org/co-ocr-htr
+Local test with `npx serve docs -l 3000`. All features functional. Live URL: https://rklugsederoeaw.github.io/co-ocr-htr-rk/
 
 ---
 

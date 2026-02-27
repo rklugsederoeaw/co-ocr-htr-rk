@@ -835,7 +835,7 @@ docs/
 | README updated | Done |
 | Live demo URL added | Done |
 
-**Live URL:** http://dhcraft.org/co-ocr-htr
+**Live URL:** https://rklugsederoeaw.github.io/co-ocr-htr-rk/
 
 ### Commits
 
@@ -2731,7 +2731,7 @@ Integration eines arabischen Test-Dokuments fuer nicht-lateinische Schriftsystem
 
 ### Test Instructions
 
-1. Oeffne https://dhcraft.org/co-ocr-htr
+1. Oeffne https://rklugsederoeaw.github.io/co-ocr-htr-rk/
 2. Klicke auf "Demos" im Header
 3. Waehle "Arabic Historical Magazines (1937)"
 4. Warte bis IIIF-Manifest geladen

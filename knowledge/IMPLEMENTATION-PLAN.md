@@ -10,7 +10,7 @@ status: complete
 
 **Status:** Phase 1-4 Complete, Phase 5 (i18n) Planned
 
-**Live Demo:** [dhcraft.org/co-ocr-htr](http://dhcraft.org/co-ocr-htr)
+**Live Demo:** [rklugsederoeaw.github.io/co-ocr-htr-rk](https://rklugsederoeaw.github.io/co-ocr-htr-rk/)
 
 **Architecture:** See [ARCHITECTURE.md](ARCHITECTURE.md) for project structure and module details.
 
@@ -39,7 +39,7 @@ status: complete
 | Inline Editing + Undo/Redo | [x] | `js/editor.js` |
 | Settings + Help Dialogs | [x] | `js/components/dialogs.js` |
 | Logo Integration | [x] | `assets/logo*.png` |
-| GitHub Pages Deployment | [x] | dhcraft.org/co-ocr-htr |
+| GitHub Pages Deployment | [x] | rklugsederoeaw.github.io/co-ocr-htr-rk |
 
 ---
 

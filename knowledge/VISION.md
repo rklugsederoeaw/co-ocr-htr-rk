@@ -95,7 +95,7 @@ coOCR/HTR positions itself as an **Editor-in-the-Loop tool**:
 | Phase 3: Batch Processing | [x] | Transcribe/validate all pages automatically |
 | Phase 4: Polish & Release | [x] | Tests, PAGE-XML Export, UI refinements |
 
-**Live Demo:** [dhcraft.org/co-ocr-htr](http://dhcraft.org/co-ocr-htr)
+**Live Demo:** [rklugsederoeaw.github.io/co-ocr-htr-rk](https://rklugsederoeaw.github.io/co-ocr-htr-rk/)
 
 ## Design Principles
 
