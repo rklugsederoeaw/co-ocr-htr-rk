@@ -155,11 +155,6 @@ class PromptLibraryManager {
         </div>
         <span class="prompt-library-item-category">${CATEGORIES[p.category] || p.category}</span>
         <div class="prompt-library-item-actions">
-          <button class="icon-btn icon-sm" data-action="edit" data-id="${p.id}" title="Edit">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-              <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
-            </svg>
-          </button>
           <button class="icon-btn icon-sm" data-action="duplicate" data-id="${p.id}" title="Duplicate">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -181,15 +176,19 @@ class PromptLibraryManager {
   }
 
   _handleListClick(e) {
+    // Action buttons (duplicate, delete) take priority
     const btn = e.target.closest('[data-action]');
-    if (!btn) return;
+    if (btn) {
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+      if (action === 'duplicate') this._duplicatePrompt(id);
+      else if (action === 'delete') this._deletePrompt(id);
+      return;
+    }
 
-    const action = btn.dataset.action;
-    const id = btn.dataset.id;
-
-    if (action === 'edit') this._showEditView(id);
-    else if (action === 'duplicate') this._duplicatePrompt(id);
-    else if (action === 'delete') this._deletePrompt(id);
+    // Clicking anywhere on the row opens edit
+    const row = e.target.closest('.prompt-library-item');
+    if (row) this._showEditView(row.dataset.id);
   }
 
   // ===========================================================================
