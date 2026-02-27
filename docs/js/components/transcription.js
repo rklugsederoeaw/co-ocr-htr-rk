@@ -252,6 +252,9 @@ class TranscriptionManager {
                     : undefined
             });
 
+            // Capture resolved prompt for thinking analysis
+            this._lastResolvedPrompt = llmService._lastResolvedPrompt || '';
+
             if (supportsThinking) {
                 appState.emitThinkingComplete({
                     operation: 'transcription',
@@ -704,6 +707,11 @@ class TranscriptionManager {
             overlay.hidden = true;
         }
     }
+
+    /**
+     * Get the last resolved prompt sent to the LLM (for thinking analysis)
+     */
+    getLastResolvedPrompt() { return this._lastResolvedPrompt || ''; }
 }
 
 // Add spinner animation CSS

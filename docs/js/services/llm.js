@@ -751,6 +751,8 @@ class LLMService {
       structuredContext,
       options.promptConfig || null
     );
+    // Capture resolved prompt for thinking analysis
+    this._lastResolvedPrompt = prompt;
     const model = this.getCurrentModel();
     console.log(`[LLM] model=${model} image=${imageBase64 ? 'yes' : 'no'} context=${contextDescription ? 'yes' : 'no'}`);
 
@@ -850,6 +852,8 @@ class LLMService {
 
     const model = this.providers.gemini.defaultModel || 'gemini-3-pro-preview';
     const prompt = buildDescriptionPrompt(options.customPrompt);
+    // Capture resolved prompt for thinking analysis
+    this._lastResolvedPrompt = prompt;
 
     console.log(`[LLM] describe() using Gemini model=${model} customPrompt=${!!options.customPrompt}`);
 
@@ -1196,6 +1200,55 @@ class LLMService {
       return result;
     } catch (error) {
       console.error(`[LLM] _validateWithFallback() FAILED:`, error.message);
+      throw this._handleError(error);
+    }
+  }
+
+  // ============================================
+  // Text-Only Query (for meta-analysis)
+  // ============================================
+
+  /**
+   * Text-only query to the active provider (no image).
+   * Used for thinking analysis meta-tasks. Returns raw text response.
+   */
+  async textQuery(prompt, options = {}) {
+    const provider = options.useValidationProvider && this.validationProvider
+      ? this.validationProvider : this.activeProvider;
+    const config = this.providers[provider];
+    const apiKey = config?.apiKey;
+
+    if (!apiKey && config?.authType !== 'none') {
+      throw new Error(`No API key configured for ${config?.name || provider}.`);
+    }
+    if (provider === 'mistral') {
+      throw new Error('Mistral OCR does not support text-only queries. Switch to another provider.');
+    }
+
+    const model = options.model || this.getCurrentModel();
+    console.log(`[LLM] textQuery() provider=${provider} model=${model}`);
+
+    try {
+      let response;
+      switch (provider) {
+        case 'gemini':
+          response = await this._callGemini(apiKey, model, prompt, null);
+          break;
+        case 'openai':
+          response = await this._callOpenAI(apiKey, model, prompt, null);
+          break;
+        case 'anthropic':
+          response = await this._callAnthropic(apiKey, model, prompt, null);
+          break;
+        case 'ollama':
+          response = await this._callOllama(model, prompt, null);
+          break;
+        default:
+          throw new Error(`Provider ${provider} not supported for text queries.`);
+      }
+      return response;
+    } catch (error) {
+      console.error(`[LLM] textQuery() FAILED:`, error.message);
       throw this._handleError(error);
     }
   }

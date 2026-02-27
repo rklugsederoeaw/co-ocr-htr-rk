@@ -563,6 +563,9 @@ class ValidationPanel {
                 options.onThinkingChunk = (text) => appState.emitThinkingChunk({ text, operation: 'validation' });
             }
 
+            // Capture resolved prompt for thinking analysis
+            this._lastResolvedPrompt = options.customPrompt || '(default validation prompt)';
+
             const results = await validationEngine.validate(text, segments, options);
 
             if (supportsThinking && willUseLLM) {
@@ -1307,6 +1310,11 @@ class ValidationPanel {
             });
         });
     }
+
+    /**
+     * Get the last resolved prompt sent to the LLM (for thinking analysis)
+     */
+    getLastResolvedPrompt() { return this._lastResolvedPrompt || ''; }
 }
 
 // Export singleton instance

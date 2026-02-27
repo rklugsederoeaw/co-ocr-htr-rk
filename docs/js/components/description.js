@@ -335,6 +335,9 @@ class DescriptionManager {
                     : undefined
             });
 
+            // Capture resolved prompt for thinking analysis
+            this._lastResolvedPrompt = llmService._lastResolvedPrompt || customPrompt;
+
             if (supportsThinking) {
                 appState.emitThinkingComplete({
                     operation: 'description',
@@ -931,6 +934,11 @@ class DescriptionManager {
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
+
+    /**
+     * Get the last resolved prompt sent to the LLM (for thinking analysis)
+     */
+    getLastResolvedPrompt() { return this._lastResolvedPrompt || ''; }
 }
 
 // Export singleton instance

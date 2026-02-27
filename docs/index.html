@@ -518,6 +518,14 @@
                                 <polyline points="18 15 12 9 6 15"></polyline>
                             </svg>
                         </button>
+                        <button type="button" class="thinking-analyze-btn" id="thinkingAnalyzeBtn"
+                                title="Analyze LLM reasoning" hidden>
+                            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
                     </div>
                     <pre class="thinking-content" id="thinkingContent"></pre>
                 </div>
@@ -1786,6 +1794,106 @@
                 <div class="prompt-edit-actions">
                     <button type="button" class="btn btn-secondary" id="promptEditCancel">Cancel</button>
                     <button type="button" class="btn btn-primary" id="promptEditSave">Save</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- Thinking Analysis Dialog -->
+    <dialog id="thinkingAnalysisDialog" class="dialog dialog-xl">
+        <div class="dialog-header">
+            <h2 class="dialog-title">Thinking Analysis</h2>
+            <button class="dialog-close" data-close-dialog aria-label="Close">
+                <svg class="icon-md"><use href="#icon-close"></use></svg>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <!-- Step Indicator -->
+            <div class="analysis-steps" id="analysisSteps">
+                <span class="analysis-step active" data-step="1">1. Capture</span>
+                <span class="analysis-step-arrow">&rarr;</span>
+                <span class="analysis-step" data-step="2">2. Analysis</span>
+                <span class="analysis-step-arrow">&rarr;</span>
+                <span class="analysis-step" data-step="3">3. Optimize</span>
+            </div>
+
+            <!-- STEP 1: Capture Summary -->
+            <div class="analysis-panel" id="analysisStep1">
+                <div class="analysis-meta" id="analysisMeta"></div>
+                <details class="analysis-expandable">
+                    <summary>Prompt used (<span id="analysisPromptLen">0</span> chars)</summary>
+                    <pre class="analysis-pre" id="analysisCapturedPrompt"></pre>
+                </details>
+                <details class="analysis-expandable" open>
+                    <summary>Thinking output (<span id="analysisThinkingLen">0</span> chars)</summary>
+                    <pre class="analysis-pre analysis-pre-scroll" id="analysisCapturedThinking"></pre>
+                </details>
+                <details class="analysis-expandable">
+                    <summary>Result (<span id="analysisResultLen">0</span> chars)</summary>
+                    <pre class="analysis-pre analysis-pre-scroll" id="analysisCapturedResult"></pre>
+                </details>
+                <div class="analysis-actions">
+                    <button class="btn btn-primary" id="analysisRunBtn">Analyze Reasoning</button>
+                    <span class="text-muted text-sm">Makes one LLM call (text-only).</span>
+                </div>
+            </div>
+
+            <!-- STEP 2: Analysis Result + Scholar Feedback -->
+            <div class="analysis-panel" id="analysisStep2" hidden>
+                <div class="analysis-loading" id="analysisLoading" hidden>
+                    <div class="spinner"></div>
+                    <span>Analyzing reasoning process...</span>
+                </div>
+                <div class="analysis-result" id="analysisResultContent"></div>
+                <div class="input-wrapper">
+                    <label for="scholarFeedback">Your Assessment</label>
+                    <textarea id="scholarFeedback" rows="4"
+                        placeholder="e.g., The model correctly identified abbreviation marks but missed the n/u distinction in line 3. Emphasize minim disambiguation in the optimized prompt."></textarea>
+                </div>
+                <div class="analysis-actions">
+                    <button class="btn btn-secondary" id="analysisBackTo1">Back</button>
+                    <button class="btn btn-primary" id="analysisOptimizeBtn">Generate Optimized Prompt</button>
+                    <span class="text-muted text-sm">Makes one LLM call (text-only).</span>
+                </div>
+            </div>
+
+            <!-- STEP 3: Optimized Prompt + Save -->
+            <div class="analysis-panel" id="analysisStep3" hidden>
+                <div class="analysis-loading" id="optimizeLoading" hidden>
+                    <div class="spinner"></div>
+                    <span>Generating optimized prompt...</span>
+                </div>
+                <div class="input-wrapper">
+                    <label for="optimizedPromptText">Optimized Prompt (editable)</label>
+                    <textarea id="optimizedPromptText" rows="14"></textarea>
+                </div>
+                <details class="analysis-expandable">
+                    <summary>Original prompt for comparison</summary>
+                    <pre class="analysis-pre" id="analysisOriginalForDiff"></pre>
+                </details>
+                <div class="analysis-save-fields">
+                    <div class="input-wrapper">
+                        <label for="analysisPromptName">Name</label>
+                        <input type="text" id="analysisPromptName" placeholder="e.g., Medieval Latin v2 (minim focus)">
+                    </div>
+                    <div class="input-wrapper input-wrapper-inline">
+                        <label for="analysisPromptCategory">Category</label>
+                        <select id="analysisPromptCategory">
+                            <option value="transcription">Transcription (Stage 1)</option>
+                            <option value="description">Description</option>
+                            <option value="validation">LLM Review</option>
+                            <option value="stage2">Stage 2 (Paleographic)</option>
+                            <option value="stage3">Stage 3 (Philological)</option>
+                        </select>
+                    </div>
+                    <div class="input-wrapper">
+                        <label for="analysisPromptTags">Tags</label>
+                        <input type="text" id="analysisPromptTags" value="optimized, thinking-analysis">
+                    </div>
+                </div>
+                <div class="analysis-actions">
+                    <button class="btn btn-secondary" id="analysisBackTo2">Back</button>
+                    <button class="btn btn-primary" id="analysisSaveBtn">Save to Prompt Library</button>
                 </div>
             </div>
         </div>

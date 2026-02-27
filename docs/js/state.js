@@ -134,6 +134,18 @@ class AppState extends EventTarget {
       meta: {
         createdAt: null,
         updatedAt: null
+      },
+
+      // Ephemeral thinking capture (not persisted -- the artifact is the optimized prompt)
+      thinkingCapture: {
+        operation: null,     // 'transcription' | 'description' | 'validation'
+        provider: '',
+        model: '',
+        prompt: '',          // The prompt sent to the LLM
+        thinkingText: '',    // Full accumulated thinking text
+        resultText: '',      // Output of the operation
+        timestamp: null,
+        duration: 0
       }
     };
 
@@ -1196,6 +1208,18 @@ class AppState extends EventTarget {
   emitThinkingChunk(detail) { this._emit('thinkingChunk', detail); }
   emitThinkingComplete(detail) { this._emit('thinkingComplete', detail); }
   emitThinkingError(detail) { this._emit('thinkingError', detail); }
+
+  captureThinking(detail) {
+    this.data.thinkingCapture = { ...detail, timestamp: new Date().toISOString() };
+    this._emit('thinkingCaptured', this.data.thinkingCapture);
+  }
+
+  clearThinkingCapture() {
+    this.data.thinkingCapture = {
+      operation: null, provider: '', model: '', prompt: '',
+      thinkingText: '', resultText: '', timestamp: null, duration: 0
+    };
+  }
 
   // ============================================
   // Project Management

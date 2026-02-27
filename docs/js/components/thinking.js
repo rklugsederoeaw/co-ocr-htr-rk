@@ -24,6 +24,10 @@ class ThinkingPanel {
         this._icon = null;
         this._collapseBtn = null;
         this._userScrolledUp = false;
+        // Accumulator for thinking analysis
+        this._accumulatedText = '';
+        this._captureMetadata = {};
+        this._lastDuration = 0;
     }
 
     init() {
@@ -78,6 +82,19 @@ class ThinkingPanel {
     _onStart(detail) {
         if (!this._section) return;
 
+        // Reset accumulator for new operation
+        this._accumulatedText = '';
+        this._captureMetadata = {
+            operation: detail.operation,
+            provider: detail.provider,
+            model: detail.model
+        };
+        this._lastDuration = 0;
+
+        // Hide analyze button for fresh operation
+        const analyzeBtn = document.getElementById('thinkingAnalyzeBtn');
+        if (analyzeBtn) analyzeBtn.hidden = true;
+
         const operationLabels = {
             transcription: 'Transcription',
             validation: 'LLM Review',
@@ -106,6 +123,9 @@ class ThinkingPanel {
     _onChunk(detail) {
         if (!this._content || !detail.text) return;
 
+        // Accumulate for analysis
+        this._accumulatedText += detail.text;
+
         // Use textContent += for XSS safety
         this._content.textContent += detail.text;
 
@@ -121,6 +141,8 @@ class ThinkingPanel {
     _onComplete(detail) {
         if (!this._section) return;
 
+        this._lastDuration = detail.duration || 0;
+
         this._section.classList.remove('thinking-active');
         this._section.classList.add('thinking-complete');
 
@@ -128,6 +150,12 @@ class ThinkingPanel {
         if (this._header && detail.duration) {
             const seconds = (detail.duration / 1000).toFixed(1);
             this._header.textContent += ` (${seconds}s)`;
+        }
+
+        // Show analyze button if we have accumulated thinking text
+        const analyzeBtn = document.getElementById('thinkingAnalyzeBtn');
+        if (analyzeBtn && this._accumulatedText.length > 0) {
+            analyzeBtn.hidden = false;
         }
     }
 
@@ -171,7 +199,18 @@ class ThinkingPanel {
         }
 
         this._userScrolledUp = false;
+        this._accumulatedText = '';
+        this._captureMetadata = {};
+        this._lastDuration = 0;
+
+        const analyzeBtn = document.getElementById('thinkingAnalyzeBtn');
+        if (analyzeBtn) analyzeBtn.hidden = true;
     }
+
+    // Getters for thinking analysis
+    getAccumulatedThinking() { return this._accumulatedText; }
+    getCaptureMetadata() { return this._captureMetadata || {}; }
+    getLastDuration() { return this._lastDuration; }
 }
 
 // Export singleton
