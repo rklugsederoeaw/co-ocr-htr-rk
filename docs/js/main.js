@@ -49,6 +49,10 @@ async function loadLocalConfig() {
     }
 
     try {
+        // Pre-check existence to avoid MIME-type console warning on 404
+        const check = await fetch('./config.local.js', { method: 'HEAD' });
+        if (!check.ok) return false;
+
         const module = await import('../config.local.js');
         const config = module.LOCAL_CONFIG;
 
