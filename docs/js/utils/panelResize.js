@@ -214,8 +214,13 @@ export function initPanelResize() {
         handle.addEventListener('keydown', onKeydown);
     }
 
-    // Reposition handles on window resize
-    window.addEventListener('resize', positionHandles);
+    // Reposition handles whenever container size changes (covers window resize,
+    // scrollbar appearance, font loading, and any layout shift after init)
+    if (typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(positionHandles).observe(container);
+    } else {
+        window.addEventListener('resize', positionHandles);
+    }
 
     // Keep JS-driven columns aligned with the CSS 1200px breakpoint
     twoColumnMql = window.matchMedia(`(max-width: ${TWO_COLUMN_BREAKPOINT}px)`);
@@ -226,6 +231,7 @@ export function initPanelResize() {
         twoColumnMql.addListener(onBreakpointChange);
     }
 
-    // Initial positioning after layout settles
-    requestAnimationFrame(positionHandles);
+    // Reposition after layout settles: double-rAF ensures at least one
+    // paint cycle has occurred (single rAF can fire before reflow completes)
+    requestAnimationFrame(() => requestAnimationFrame(positionHandles));
 }
