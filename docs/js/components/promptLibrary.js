@@ -360,8 +360,16 @@ class PromptLibraryManager {
     const textarea = typeof targetTextarea === 'string'
       ? document.getElementById(targetTextarea)
       : targetTextarea;
+
+    // Append inside the parent dialog (modal dialogs block clicks outside)
+    const parentDialog = textarea?.closest('dialog') || document.body;
+
     if (textarea) {
       const rect = textarea.getBoundingClientRect();
+      const parentRect = parentDialog === document.body
+        ? { top: 0, left: 0 }
+        : parentDialog.getBoundingClientRect();
+
       popup.style.position = 'fixed';
       popup.style.top = `${rect.top}px`;
       popup.style.left = `${rect.right + 8}px`;
@@ -376,7 +384,7 @@ class PromptLibraryManager {
       }
     }
 
-    document.body.appendChild(popup);
+    parentDialog.appendChild(popup);
 
     // Close on outside click (next tick)
     requestAnimationFrame(() => {
