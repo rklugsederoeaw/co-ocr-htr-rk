@@ -247,13 +247,8 @@ class DialogManager {
                 this.updateApiKeyHint(provider);
             }
 
-            // Show/hide validation section
-            if (validationSection) {
-                validationSection.hidden = !isOcrOnly;
-            }
-
             // Auto-fill validation provider if same API key exists
-            if (isOcrOnly && validationModelSelect) {
+            if (validationModelSelect) {
                 this._autoFillValidationProvider();
             }
 
@@ -1502,9 +1497,8 @@ class DialogManager {
             llmService.setEndpoint(provider, endpointInput.value);
         }
 
-        // Save validation provider (if OCR-only model and validation provider selected)
-        const isOcrOnly = this._isModelOcrOnly(model);
-        if (isOcrOnly && !validationSection?.hidden && validationModelSelect?.value) {
+        // Save validation provider (if selected)
+        if (validationModelSelect?.value) {
             const validationModel = validationModelSelect.value;
             const validationProvider = this._getProviderFromValidationModel(validationModel);
 
@@ -1542,7 +1536,7 @@ class DialogManager {
 
             console.log(`[Dialogs] Validation provider configured: ${validationProvider} (${actualValidationModel})`);
         } else {
-            // Clear validation provider if not OCR-only or no validation provider selected
+            // Clear validation provider if no validation model selected
             llmService.clearValidationProvider();
             storage.clearValidationProviderConfig();
             console.log('[Dialogs] Validation provider cleared');

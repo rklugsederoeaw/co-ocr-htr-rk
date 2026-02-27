@@ -32,7 +32,7 @@ This fork is maintained by **Robert Klugseder** (Austrian Academy of Sciences, A
 
 - **Persistent project management** with IndexedDB (multiple projects, image storage)
 - **Illuminated initials description** via Google Gemini (art-historical analysis)
-- **Explicit validation provider configuration** for OCR-only models
+- **Flexible validation provider configuration** for any model (separate transcription and validation models)
 - **Responsive panel layouts** with resize handles and CSS Container Queries
 - **LLM Review Apply** -- apply LLM suggestions directly into the editor
 - **HTR Post-Processing Pipeline** (feature-flagged) with multi-stage normalization
@@ -178,7 +178,7 @@ Key changes:
 - Vertical resize handles for validation panel sub-sections (thinking, validation, LLM review) (e2f9f90)
 - Keyboard, mouse, and double-click-reset support for vertical resize (e2f9f90)
 
-### Fork Milestone 10: Project Export/Import (.coocr) (2026-02-27)
+### Fork Milestone 10: Project Export/Import (.coocr) and UX Fixes (2026-02-27)
 
 Key changes:
 
@@ -189,6 +189,8 @@ Key changes:
 - Password prompt dialog for encrypted API key decryption on import
 - Export button per project in the project list dialog
 - "Import Project (.coocr)" entry in the upload menu
+- "Describing..." loading overlay in editor panel during image description (matching transcription UX)
+- Validation provider configuration now always visible in API dialog (not restricted to OCR-only models)
 
 ---
 
@@ -293,35 +295,36 @@ This feature visually analyzes manuscript pages and generates art-historical des
 
 ---
 
-### Validation Provider for OCR-Only Models
+### Validation Provider Configuration
 
-OCR-only models like Mistral OCR or DeepSeek OCR are specialized for text recognition and cannot perform content validation. For hybrid workflows (OCR transcription + LLM validation), coOCR/HTR-rk supports explicit validation provider configuration.
+coOCR/HTR-rk allows configuring a separate model for validation and LLM review, independent of the transcription model. This is useful for hybrid workflows (e.g., OCR transcription + LLM validation) or simply to use a different model for review than for transcription.
 
-**Automatic fallback (default):**
+**Default behavior (no explicit validation provider):**
 
-- When an OCR-only model is active and **no** validation provider is configured, the system first searches for a configured cloud validation provider
+- The transcription model is also used for validation
+- For OCR-only models (Mistral OCR, DeepSeek OCR), the system automatically falls back to a configured cloud provider
 - Cloud fallback priority: Gemini > OpenAI > Anthropic
-- For Ollama-based OCR workflows (e.g., DeepSeek-OCR), a local text-model fallback can be attempted (e.g., `llama3.2`) if no cloud key is configured
-- Fallback selection is automatic when a suitable provider is available; otherwise, the UI prompts you to configure one explicitly
+- For Ollama-based OCR workflows, a local text-model fallback can be attempted (e.g., `llama3.2`) if no cloud key is configured
 
 **Configure an explicit validation provider:**
 
 1. Click the model indicator to open the API dialog
-2. Select an OCR-only model (e.g., Mistral OCR) - a warning banner appears
-3. In the **"Validation Configuration"** section, choose a validation model from the dropdown
+2. The **"Validation Configuration"** section is always visible below the model selection
+3. Choose a validation model from the dropdown (or leave empty to use the transcription model)
 4. Enter the API key for the validation provider (auto-filled if already stored)
 5. Optional: Enable **"Store validation API key permanently"** for persistent storage
 
 **Validation priority (three tiers):**
 
 1. Explicitly configured validation provider (highest priority)
-2. Automatic fallback to a configured cloud provider
-3. Active provider (if it supports validation)
+2. Automatic fallback to a configured cloud provider (for OCR-only models)
+3. Active transcription provider (default)
 
-**Typical hybrid workflow:**
+**Typical hybrid workflows:**
 
-- **Transcription:** DeepSeek-OCR via Ollama (local) or Mistral OCR (cloud)
-- **Validation:** Gemini Flash or GPT-5.2 Mini (cloud, affordable and fast)
+- **OCR-only:** Mistral OCR (transcription) + Gemini Flash (validation)
+- **Cost optimization:** Gemini Pro (transcription) + Gemini Flash (validation)
+- **Local + cloud:** Ollama DeepSeek-OCR (transcription) + GPT-5.2 Mini (validation)
 
 ---
 

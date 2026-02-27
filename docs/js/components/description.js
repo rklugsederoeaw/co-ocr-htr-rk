@@ -163,6 +163,7 @@ class DescriptionManager {
 
         appState.addEventListener('descriptionComplete', () => {
             this.setLoading(false);
+            this.showEditorLoading(false);
             this.showDescriptionPanel();
         });
 
@@ -297,6 +298,7 @@ class DescriptionManager {
 
         // Single page description (current page)
         this.setLoading(true);
+        this.showEditorLoading(true);
 
         // Check thinking support before try/catch so it's available in catch block
         const supportsThinking = FEATURE_FLAGS.thinkingPanel && llmService._supportsThinking('gemini');
@@ -349,6 +351,7 @@ class DescriptionManager {
             });
 
             this.setLoading(false);
+            this.showEditorLoading(false);
             dialogManager.showToast(
                 `Description complete (${result.provider})`,
                 'success'
@@ -378,6 +381,7 @@ class DescriptionManager {
             }
 
             this.setLoading(false);
+            this.showEditorLoading(false);
         }
     }
 
@@ -400,6 +404,7 @@ class DescriptionManager {
         appState.startBatch('description', pages.length);
         batchProgress.show('description', pages.length);
         this.setLoading(true);
+        this.showEditorLoading(true);
 
         const results = [];
 
@@ -483,6 +488,7 @@ class DescriptionManager {
         }
 
         this.setLoading(false);
+        this.showEditorLoading(false);
 
         // Show completion summary
         const { successCount, errorCount, status } = appState.data.batch;
@@ -725,6 +731,43 @@ class DescriptionManager {
             if (btnText) btnText.hidden = false;
             if (btnSpinner) btnSpinner.hidden = true;
             appState.setLoading(false);
+        }
+    }
+
+    /**
+     * Show/hide loading overlay in editor panel
+     * @param {boolean} show - Whether to show loading
+     */
+    showEditorLoading(show) {
+        const editorPanel = document.getElementById('editorContent');
+        if (!editorPanel) return;
+
+        let overlay = document.getElementById('editorLoadingOverlay');
+
+        if (show) {
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'editorLoadingOverlay';
+                overlay.className = 'editor-loading-overlay';
+                overlay.innerHTML = `
+                    <div class="loading-content">
+                        <div class="loading-spinner-large"></div>
+                        <span>Describing...</span>
+                        <span class="loading-hint">This may take a few seconds</span>
+                    </div>
+                `;
+                editorPanel.style.position = 'relative';
+                editorPanel.appendChild(overlay);
+            } else {
+                // Update text in case overlay was created by transcription
+                const textSpan = overlay.querySelector('.loading-content > span:not(.loading-hint)');
+                if (textSpan) textSpan.textContent = 'Describing...';
+            }
+            overlay.hidden = false;
+        } else {
+            if (overlay) {
+                overlay.hidden = true;
+            }
         }
     }
 

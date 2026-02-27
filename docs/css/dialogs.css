@@ -1990,6 +1990,15 @@ kbd {
   border: 1px solid rgba(255, 193, 7, 0.3);
 }
 
+.info-banner-info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.info-banner-info svg {
+  color: #3b82f6;
+}
+
 .info-banner svg {
   flex-shrink: 0;
   color: #ffc107;
