@@ -38,6 +38,7 @@ This fork is maintained by **Robert Klugseder** (Austrian Academy of Sciences, A
 - **HTR Post-Processing Pipeline** (feature-flagged) with multi-stage normalization
 - **LLM Thinking Panel** -- real-time streaming of LLM reasoning (Gemini, Anthropic, Ollama)
 - **Prompt Profiles** -- scenario-based prompt architecture for different document types
+- **Project export/import** (.coocr archive) for cross-browser/device transfer with optional encrypted API keys
 - **Improved UX** with custom dialogs, storage quota display, and tooltips
 
 ## Quick Start
@@ -177,6 +178,20 @@ Key changes:
 - Vertical resize handles for validation panel sub-sections (thinking, validation, LLM review) (e2f9f90)
 - Keyboard, mouse, and double-click-reset support for vertical resize (e2f9f90)
 
+### Fork Milestone 10: Project Export/Import (.coocr) (2026-02-27)
+
+Key changes:
+
+- Project export/import as `.coocr` archive (ZIP-based via JSZip) for cross-browser/device transfer (f3e74fd)
+- Archive contains project metadata, session state, LLM settings, and images
+- Optional AES-GCM encrypted API key export with password protection (Web Crypto API, PBKDF2)
+- Import with conflict detection: replace existing, keep both (rename), or cancel
+- Password prompt dialog for encrypted API key decryption on import
+- Export button per project in the project list dialog
+- "Import Project (.coocr)" entry in the upload menu
+
+---
+
 <!-- CHANGELOG_END -->
 
 ---
@@ -193,6 +208,7 @@ This fork extends that base with additional persistence, workflow, and UX capabi
 - **HTR Post-Processing**: multi-stage normalization pipeline (Stage 2 + 3) with confidence/marker canonicalization (feature-flagged)
 - **Import paths**: image upload, PAGE-XML, METS-XML, IIIF manifests
 - **Export formats**: TXT, JSON, Markdown, PAGE-XML, TEI-XML, ZIP (multi-page)
+- **Project export/import**: `.coocr` archive format for cross-browser/device transfer with optional AES-GCM encrypted API keys
 - **Project persistence**: IndexedDB-backed projects/sessions/images with quota display
 - **Multi-project workflow**: create, rename, switch, delete
 - **Optional API key persistence**: user-controlled storage in IndexedDB
