@@ -268,6 +268,15 @@ describe('AppState', () => {
       expect(appState.isMultiPage()).toBe(true);
     });
 
+    it('should schedule autosave when pages are set', () => {
+      const scheduleSpy = vi.spyOn(appState, '_scheduleAutoSave');
+
+      appState.setPages(mockPages);
+
+      expect(scheduleSpy).toHaveBeenCalled();
+      scheduleSpy.mockRestore();
+    });
+
     it('should start at first page', () => {
       appState.setPages(mockPages);
 
@@ -1044,6 +1053,39 @@ describe('AppState', () => {
       expect(state.validation.rules).toHaveLength(1);
       expect(state.validation.summary).toBeNull();
       expect(state.validation.timestamp).toBeNull();
+      expect(state.validation.customPrompt).toBe('');
+    });
+
+    it('should reset stale in-memory state before applying a partial session', async () => {
+      appState.data.transcription.raw = 'stale text';
+      appState.data.transcription.segments = [{ lineNumber: 1, text: 'stale' }];
+      appState.data.document.filename = 'stale.jpg';
+      appState.data.validation = {
+        status: 'complete',
+        rules: [{ name: 'stale', type: 'warning' }],
+        llmJudge: { confidence: 'likely' },
+        summary: { totalIssues: 99 },
+        timestamp: '2020-01-01T00:00:00.000Z',
+        customPrompt: 'stale',
+        pipeline: { stage2: { status: 'success' }, stage3: { status: 'success' } }
+      };
+
+      storage.getProject.mockResolvedValue({ id: 'proj-1', name: 'Partial Project' });
+      storage.loadSession.mockResolvedValue({
+        document: { filename: 'new.jpg' },
+        validation: { status: 'idle' }
+      });
+
+      const restored = await appState.restoreSession('proj-1');
+      const state = appState.getState();
+
+      expect(restored).toBe(true);
+      expect(state.document.filename).toBe('new.jpg');
+      expect(state.transcription.raw).toBe('');
+      expect(state.transcription.segments).toEqual([]);
+      expect(state.validation.status).toBe('idle');
+      expect(state.validation.rules).toEqual([]);
+      expect(state.validation.summary).toBeNull();
       expect(state.validation.customPrompt).toBe('');
     });
 

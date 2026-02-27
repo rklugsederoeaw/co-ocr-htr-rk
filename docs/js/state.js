@@ -363,6 +363,8 @@ class AppState extends EventTarget {
       pages: this.data.pages.map(p => ({ id: p.id, filename: p.filename }))
     });
 
+    this.data.meta.updatedAt = new Date().toISOString();
+
     // Save all page images to IndexedDB (fire-and-forget)
     if (this.data.project.id) {
       const imagesToSave = this.data.pages
@@ -374,6 +376,8 @@ class AppState extends EventTarget {
         );
       }
     }
+
+    this._scheduleAutoSave();
   }
 
   /**
@@ -1352,23 +1356,54 @@ class AppState extends EventTarget {
     this.data.project = { id: project.id, name: project.name };
     storage.setActiveProjectId(projectId);
 
+    // Reset to deterministic defaults before merging a possibly partial session.
+    this.data.document = { id: null, filename: '', mimeType: '', dataUrl: '', width: 0, height: 0 };
+    this.data.image = { url: '', width: 0, height: 0 };
+    this.data.transcription = { id: null, provider: '', model: '', raw: '', segments: [], columns: [], lines: [] };
+    this.data.description = { id: null, provider: 'gemini', model: '', customPrompt: '', raw: '', timestamp: null };
+    this.data.pageDescriptions = {};
+    this.data.batchDescriptions = [];
+    this.data.validation = { status: 'idle', rules: [], llmJudge: null, summary: null, timestamp: null, customPrompt: '', pipeline: null };
+    this.data.corrections = [];
+    this.data.regions = [];
+    this.data.context = null;
+    this.data.promptConfig = {
+      profileId: 'generic_default',
+      overrides: { stage1: '', stage2: '', stage3: '' }
+    };
+    this.data.meta = { createdAt: null, updatedAt: null };
+    this.data.pages = [];
+    this.data.currentPageIndex = 0;
+    this.data.pageTranscriptions = {};
+    this.data.batchTranscriptions = [];
+    this.data.batchValidations = [];
+    this.data.batch = {
+      operation: null,
+      status: 'idle',
+      currentIndex: 0,
+      total: 0,
+      successCount: 0,
+      errorCount: 0,
+      abortRequested: false
+    };
+
     if (session) {
       // Restore data
       if (session.document) this.data.document = { ...this.data.document, ...session.document };
       if (session.transcription) this.data.transcription = session.transcription;
       if (session.description) this.data.description = session.description;
-      if (session.validation) {
-        this.data.validation = {
-          status: 'idle',
-          rules: [],
-          llmJudge: null,
-          summary: null,
-          timestamp: null,
-          customPrompt: '',
-          pipeline: null,
-          ...session.validation
-        };
-      }
+      const sessionValidation = (session.validation && typeof session.validation === 'object')
+        ? session.validation
+        : {};
+      this.data.validation = {
+        status: sessionValidation.status || 'idle',
+        rules: Array.isArray(sessionValidation.rules) ? sessionValidation.rules : [],
+        llmJudge: sessionValidation.llmJudge || null,
+        summary: sessionValidation.summary || null,
+        timestamp: sessionValidation.timestamp || null,
+        customPrompt: sessionValidation.customPrompt || '',
+        pipeline: this._normalizePipelineMetadata(sessionValidation.pipeline || null)
+      };
       if (session.corrections) this.data.corrections = session.corrections;
       if (session.regions) this.data.regions = session.regions;
       if (session.context !== undefined) this.data.context = session.context;
@@ -1383,37 +1418,6 @@ class AppState extends EventTarget {
       if (session.batchTranscriptions) this.data.batchTranscriptions = session.batchTranscriptions;
       if (session.batchDescriptions) this.data.batchDescriptions = session.batchDescriptions;
       if (session.batchValidations) this.data.batchValidations = session.batchValidations;
-    } else {
-      // Reset to empty state when no session exists (prevents stale data from previous project)
-      this.data.document = { id: null, filename: '', mimeType: '', dataUrl: '', width: 0, height: 0 };
-      this.data.image = { url: '', width: 0, height: 0 };
-      this.data.transcription = { id: null, provider: '', model: '', raw: '', segments: [], columns: [], lines: [] };
-      this.data.description = { id: null, provider: 'gemini', model: '', customPrompt: '', raw: '', timestamp: null };
-      this.data.pageDescriptions = {};
-      this.data.batchDescriptions = [];
-      this.data.validation = { status: 'idle', rules: [], llmJudge: null, summary: null, timestamp: null, customPrompt: '', pipeline: null };
-      this.data.corrections = [];
-      this.data.regions = [];
-      this.data.context = null;
-      this.data.promptConfig = {
-        profileId: 'generic_default',
-        overrides: { stage1: '', stage2: '', stage3: '' }
-      };
-      this.data.meta = { createdAt: null, updatedAt: null };
-      this.data.pages = [];
-      this.data.currentPageIndex = 0;
-      this.data.pageTranscriptions = {};
-      this.data.batchTranscriptions = [];
-      this.data.batchValidations = [];
-      this.data.batch = {
-        operation: null,
-        status: 'idle',
-        currentIndex: 0,
-        total: 0,
-        successCount: 0,
-        errorCount: 0,
-        abortRequested: false
-      };
     }
 
     // Restore images from IDB

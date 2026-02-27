@@ -1490,6 +1490,14 @@ class DialogManager {
                 }
             }
         }
+        // Delete persisted transcription API key if persistence is unchecked.
+        if (provider !== 'ollama' && !persistCheckbox?.checked) {
+            try {
+                await storage.deleteApiKey(provider, false);
+            } catch (err) {
+                console.warn('[Dialogs] Failed to delete persisted API key:', err);
+            }
+        }
 
         // Save Ollama endpoint
         if (provider === 'ollama' && endpointInput?.value) {

@@ -99,11 +99,22 @@ describe('Dialog validation key persistence regressions', () => {
   });
 
   it('deletes persisted validation key when persist is unchecked even if input is empty', async () => {
+    // Isolate validation-key cleanup behavior from transcription-key cleanup.
+    document.getElementById('apiKeyPersist').checked = true;
+
     await dialogManager.saveApiKeysWithValidation();
 
     expect(llmService.setValidationProvider).toHaveBeenCalledWith('gemini', 'gemini-3-flash-preview');
     expect(llmService.setValidationApiKey).not.toHaveBeenCalled();
-    expect(storage.deleteApiKey).toHaveBeenCalledTimes(1);
     expect(storage.deleteApiKey).toHaveBeenCalledWith('gemini', true);
+  });
+
+  it('deletes persisted transcription key when persist is unchecked even if input is empty', async () => {
+    // Isolate transcription-key cleanup behavior from validation-key cleanup.
+    document.getElementById('validationApiKeyPersist').checked = true;
+
+    await dialogManager.saveApiKeysWithValidation();
+
+    expect(storage.deleteApiKey).toHaveBeenCalledWith('mistral', false);
   });
 });

@@ -17,6 +17,10 @@ import {
 } from '../utils/constants.js';
 
 const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const MAX_ARCHIVE_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
+const MAX_IMAGES_PER_ARCHIVE = 200;
+const MAX_ENTRY_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const VALIDATION_KEY_SUFFIX = '_validation';
 
 class ProjectIOService {
 
@@ -75,7 +79,8 @@ class ProjectIOService {
             createdAt: project.createdAt,
             updatedAt: project.updatedAt
         };
-        zip.file('project.json', JSON.stringify(projectData, null, 2));
+        const projectJson = JSON.stringify(projectData, null, 2);
+        zip.file('project.json', projectJson);
 
         // session.json
         const sessionData = session ? { ...session } : {};
@@ -85,12 +90,21 @@ class ProjectIOService {
         zip.file('session.json', sessionJson);
 
         // settings.json
-        zip.file('settings.json', JSON.stringify(settings, null, 2));
+        const settingsJson = JSON.stringify(settings, null, 2);
+        zip.file('settings.json', settingsJson);
+
+        const checksums = {
+            'project.json': await this._sha256(projectJson),
+            'session.json': await this._sha256(sessionJson),
+            'settings.json': await this._sha256(settingsJson)
+        };
 
         // images/
         const imgFolder = zip.folder('images');
         for (const [pageId, dataUrl] of Object.entries(images)) {
+            const imagePath = `images/${pageId}.b64`;
             imgFolder.file(`${pageId}.b64`, dataUrl);
+            checksums[imagePath] = await this._sha256(dataUrl);
         }
 
         // Optional encrypted API keys
@@ -99,16 +113,17 @@ class ProjectIOService {
             if (Object.keys(allKeys).length > 0) {
                 const encrypted = await encryptKeys(allKeys, password);
                 zip.file('keys.enc', encrypted);
+                checksums['keys.enc'] = await this._sha256(encrypted);
             }
         }
 
-        // manifest.json (last -- includes checksum of session.json)
-        const checksum = await this._sha256(sessionJson);
+        // manifest.json (includes legacy session checksum + extended checksums)
         const manifest = {
             formatVersion: COOCR_FORMAT_VERSION,
             exportDate: new Date().toISOString(),
             appVersion: 'coOCR/HTR',
-            checksum
+            checksum: checksums['session.json'],
+            checksums
         };
         zip.file('manifest.json', JSON.stringify(manifest, null, 2));
 
@@ -137,131 +152,138 @@ class ProjectIOService {
      */
     async importProject(file, callbacks = {}) {
         await this._ensureJSZip();
+        this._validateArchiveSize(file);
 
         const zip = await window.JSZip.loadAsync(file);
+        const imageEntries = this._collectImageEntries(zip);
+        this._validateImageEntryCount(imageEntries.length);
 
-        // Validate manifest
-        const manifestRaw = await this._readZipFile(zip, 'manifest.json');
-        if (!manifestRaw) throw new Error('Invalid .coocr file: missing manifest.json');
-        const manifest = JSON.parse(manifestRaw);
+        let importedProjectId = null;
+        let replacedProjectId = null;
 
-        if (!manifest.formatVersion) {
-            throw new Error('Invalid .coocr file: no format version');
-        }
-        // Forward-compatible: we only reject if major version differs
-        const majorVersion = manifest.formatVersion.split('.')[0];
-        if (majorVersion !== COOCR_FORMAT_VERSION.split('.')[0]) {
-            throw new Error(`Unsupported format version: ${manifest.formatVersion} (expected ${COOCR_FORMAT_VERSION})`);
-        }
+        try {
+            // Validate manifest
+            const manifestRaw = await this._readZipFile(zip, 'manifest.json');
+            if (!manifestRaw) throw new Error('Invalid .coocr file: missing manifest.json');
+            const manifest = JSON.parse(manifestRaw);
 
-        // Read core files
-        const projectRaw = await this._readZipFile(zip, 'project.json');
-        if (!projectRaw) throw new Error('Invalid .coocr file: missing project.json');
-        const projectData = JSON.parse(projectRaw);
-
-        const sessionRaw = await this._readZipFile(zip, 'session.json');
-        const sessionData = sessionRaw ? JSON.parse(sessionRaw) : {};
-
-        const settingsRaw = await this._readZipFile(zip, 'settings.json');
-        const settingsData = settingsRaw ? JSON.parse(settingsRaw) : {};
-
-        // Verify checksum
-        if (manifest.checksum && sessionRaw) {
-            const actualChecksum = await this._sha256(sessionRaw);
-            if (actualChecksum !== manifest.checksum) {
-                throw new Error('Archive integrity check failed: session data corrupted');
+            if (!manifest.formatVersion) {
+                throw new Error('Invalid .coocr file: no format version');
             }
-        }
-
-        // Conflict detection
-        const existingProjects = await storage.listProjects();
-        const conflict = existingProjects.find(p => p.name === projectData.name);
-
-        let resolution = 'create'; // default: no conflict
-        if (conflict) {
-            if (callbacks.onConflict) {
-                resolution = await callbacks.onConflict(conflict, projectData);
-            } else {
-                resolution = 'rename'; // fallback
+            // Forward-compatible: we only reject if major version differs
+            const majorVersion = manifest.formatVersion.split('.')[0];
+            if (majorVersion !== COOCR_FORMAT_VERSION.split('.')[0]) {
+                throw new Error(`Unsupported format version: ${manifest.formatVersion} (expected ${COOCR_FORMAT_VERSION})`);
             }
 
-            if (resolution === 'cancel') return null;
+            // Read core files
+            const projectRaw = await this._readZipFile(zip, 'project.json');
+            if (!projectRaw) throw new Error('Invalid .coocr file: missing project.json');
+            const projectData = JSON.parse(projectRaw);
 
-            if (resolution === 'replace') {
-                await storage.deleteProject(conflict.id);
-            } else if (resolution === 'rename') {
-                projectData.name = this._deduplicateName(projectData.name, existingProjects);
-            }
-        }
+            const sessionRaw = await this._readZipFile(zip, 'session.json');
+            const sessionData = sessionRaw ? JSON.parse(sessionRaw) : {};
 
-        // Generate new project ID (unless replacing with same ID)
-        const newProjectId = resolution === 'replace' && conflict
-            ? conflict.id
-            : this._generateId();
-
-        // Save project
-        await storage.createProject({
-            id: newProjectId,
-            name: projectData.name,
-            filename: projectData.filename,
-            pageCount: projectData.pageCount || 0,
-            hasTranscription: projectData.hasTranscription || false,
-            createdAt: projectData.createdAt || new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        });
-
-        // Save session
-        if (sessionRaw) {
-            await storage.saveSession(newProjectId, sessionData);
-        }
-
-        // Save images
-        const imgFolder = zip.folder('images');
-        if (imgFolder) {
-            const imageFiles = [];
-            imgFolder.forEach((relativePath, zipEntry) => {
-                if (!zipEntry.dir && relativePath.endsWith('.b64')) {
-                    imageFiles.push(zipEntry);
-                }
+            const settingsRaw = await this._readZipFile(zip, 'settings.json');
+            const settingsData = settingsRaw ? JSON.parse(settingsRaw) : {};
+            await this._verifyArchiveIntegrity({
+                manifest,
+                zip,
+                projectRaw,
+                sessionRaw,
+                settingsRaw
             });
 
-            for (const entry of imageFiles) {
-                const pageId = entry.name.replace(/^images\//, '').replace(/\.b64$/, '');
-                const dataUrl = await entry.async('string');
-                await storage.saveImage(newProjectId, pageId, dataUrl);
-            }
-        }
+            // Conflict detection
+            const existingProjects = await storage.listProjects();
+            const conflict = existingProjects.find(p => p.name === projectData.name);
 
-        // Restore LLM settings
-        this._restoreSettings(settingsData);
+            let resolution = 'create'; // default: no conflict
+            if (conflict) {
+                if (callbacks.onConflict) {
+                    resolution = await callbacks.onConflict(conflict, projectData);
+                } else {
+                    resolution = 'rename'; // fallback
+                }
 
-        // Handle encrypted API keys
-        const hasKeysEnc = zip.file('keys.enc') !== null;
-        if (hasKeysEnc && callbacks.onPasswordNeeded) {
-            const password = await callbacks.onPasswordNeeded();
-            if (password) {
-                try {
-                    const encryptedData = await zip.file('keys.enc').async('string');
-                    const keys = await decryptKeys(encryptedData, password);
-                    for (const [provider, apiKey] of Object.entries(keys)) {
-                        if (apiKey) {
-                            await storage.saveApiKey(provider, apiKey);
-                            llmService.setApiKey(provider, apiKey);
-                        }
-                    }
-                } catch (err) {
-                    console.error('[ProjectIO] Key decryption failed:', err);
-                    // Let caller know decryption failed (non-fatal)
-                    throw new Error('API key decryption failed. Wrong password? Keys were not restored.');
+                if (resolution === 'cancel') return null;
+
+                if (resolution === 'replace') {
+                    replacedProjectId = conflict.id;
+                } else if (resolution === 'rename') {
+                    projectData.name = this._deduplicateName(projectData.name, existingProjects);
                 }
             }
+
+            importedProjectId = this._generateId();
+
+            // Save project
+            await storage.createProject({
+                id: importedProjectId,
+                name: projectData.name,
+                filename: projectData.filename,
+                pageCount: projectData.pageCount || 0,
+                hasTranscription: projectData.hasTranscription || false,
+                createdAt: projectData.createdAt || new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
+
+            // Save session
+            if (sessionRaw) {
+                await storage.saveSession(importedProjectId, sessionData);
+            }
+
+            // Save images
+            for (const entry of imageEntries) {
+                const estimatedSize = this._estimateZipEntrySize(entry);
+                if (estimatedSize !== null && estimatedSize > MAX_ENTRY_SIZE_BYTES) {
+                    throw new Error(`Import aborted: image entry "${entry.name}" exceeds ${Math.round(MAX_ENTRY_SIZE_BYTES / 1024 / 1024)}MB`);
+                }
+
+                const pageId = entry.name.replace(/^images\//, '').replace(/\.b64$/, '');
+                const dataUrl = await entry.async('string');
+                if (this._getByteLength(dataUrl) > MAX_ENTRY_SIZE_BYTES) {
+                    throw new Error(`Import aborted: image entry "${entry.name}" exceeds ${Math.round(MAX_ENTRY_SIZE_BYTES / 1024 / 1024)}MB`);
+                }
+                await storage.saveImage(importedProjectId, pageId, dataUrl);
+            }
+
+            // Restore LLM settings
+            this._restoreSettings(settingsData);
+
+            // Handle encrypted API keys
+            const hasKeysEnc = zip.file('keys.enc') !== null;
+            if (hasKeysEnc && callbacks.onPasswordNeeded) {
+                const password = await callbacks.onPasswordNeeded();
+                if (password) {
+                    try {
+                        const encryptedData = await this._readZipFile(zip, 'keys.enc');
+                        const keys = await decryptKeys(encryptedData, password);
+                        await this._restoreImportedApiKeys(keys);
+                    } catch (err) {
+                        console.error('[ProjectIO] Key decryption failed:', err);
+                        // Let caller know decryption failed (non-fatal)
+                        throw new Error('API key decryption failed. Wrong password? Keys were not restored.', { cause: err });
+                    }
+                }
+            }
+
+            // Perform replacement only after successful import staging
+            if (replacedProjectId) {
+                await storage.deleteProject(replacedProjectId);
+            }
+
+            // Activate the imported project
+            storage.setActiveProjectId(importedProjectId);
+            await appState.restoreSession(importedProjectId);
+
+            return { projectId: importedProjectId, projectName: projectData.name };
+        } catch (error) {
+            if (importedProjectId) {
+                await this._rollbackImportedProject(importedProjectId);
+            }
+            throw error;
         }
-
-        // Activate the imported project
-        storage.setActiveProjectId(newProjectId);
-        await appState.restoreSession(newProjectId);
-
-        return { projectId: newProjectId, projectName: projectData.name };
     }
 
     // ========================================================================
@@ -345,7 +367,15 @@ class ProjectIOService {
     async _readZipFile(zip, path) {
         const entry = zip.file(path);
         if (!entry) return null;
-        return entry.async('string');
+        const estimatedSize = this._estimateZipEntrySize(entry);
+        if (estimatedSize !== null && estimatedSize > MAX_ENTRY_SIZE_BYTES) {
+            throw new Error(`Import aborted: entry "${path}" exceeds ${Math.round(MAX_ENTRY_SIZE_BYTES / 1024 / 1024)}MB`);
+        }
+        const content = await entry.async('string');
+        if (this._getByteLength(content) > MAX_ENTRY_SIZE_BYTES) {
+            throw new Error(`Import aborted: entry "${path}" exceeds ${Math.round(MAX_ENTRY_SIZE_BYTES / 1024 / 1024)}MB`);
+        }
+        return content;
     }
 
     async _sha256(text) {
@@ -380,6 +410,126 @@ class ProjectIOService {
             counter++;
         }
         return candidate;
+    }
+
+    _validateArchiveSize(file) {
+        if (file?.size && file.size > MAX_ARCHIVE_SIZE_BYTES) {
+            throw new Error(`Import aborted: archive exceeds ${Math.round(MAX_ARCHIVE_SIZE_BYTES / 1024 / 1024)}MB`);
+        }
+    }
+
+    _collectImageEntries(zip) {
+        const imageFiles = [];
+        zip.forEach((relativePath, zipEntry) => {
+            if (!zipEntry.dir && relativePath.startsWith('images/') && relativePath.endsWith('.b64')) {
+                imageFiles.push(zipEntry);
+            }
+        });
+        return imageFiles;
+    }
+
+    _validateImageEntryCount(count) {
+        if (count > MAX_IMAGES_PER_ARCHIVE) {
+            throw new Error(`Import aborted: archive contains too many images (${count} > ${MAX_IMAGES_PER_ARCHIVE})`);
+        }
+    }
+
+    _estimateZipEntrySize(entry) {
+        const size =
+            entry?._data?.uncompressedSize ??
+            entry?._data?.compressedSize ??
+            entry?._data?.length ??
+            null;
+        return Number.isFinite(size) ? Number(size) : null;
+    }
+
+    _getByteLength(text) {
+        return new TextEncoder().encode(String(text || '')).length;
+    }
+
+    async _verifyArchiveIntegrity({ manifest, zip, projectRaw, sessionRaw, settingsRaw }) {
+        const checksums = manifest?.checksums;
+
+        // New format: verify all listed checksums.
+        if (checksums && typeof checksums === 'object' && Object.keys(checksums).length > 0) {
+            for (const [path, expectedChecksum] of Object.entries(checksums)) {
+                if (!expectedChecksum) continue;
+
+                const content = path === 'project.json'
+                    ? projectRaw
+                    : path === 'session.json'
+                        ? sessionRaw
+                        : path === 'settings.json'
+                            ? settingsRaw
+                            : await this._readZipFile(zip, path);
+
+                if (content === null) {
+                    throw new Error(`Archive integrity check failed: missing ${path}`);
+                }
+
+                const actualChecksum = await this._sha256(content);
+                if (actualChecksum !== expectedChecksum) {
+                    throw new Error(`Archive integrity check failed: ${path} is corrupted`);
+                }
+            }
+            return;
+        }
+
+        // Legacy format (v1.0): only session checksum available.
+        if (manifest?.checksum && sessionRaw) {
+            const actualChecksum = await this._sha256(sessionRaw);
+            if (actualChecksum !== manifest.checksum) {
+                throw new Error('Archive integrity check failed: session data corrupted');
+            }
+        }
+    }
+
+    async _restoreImportedApiKeys(keys) {
+        if (!keys || typeof keys !== 'object') return;
+
+        for (const [providerKey, apiKey] of Object.entries(keys)) {
+            if (!apiKey || typeof apiKey !== 'string') continue;
+
+            if (providerKey.endsWith(VALIDATION_KEY_SUFFIX)) {
+                const provider = providerKey.slice(0, -VALIDATION_KEY_SUFFIX.length);
+                if (!llmService.providers?.[provider]) {
+                    console.warn(`[ProjectIO] Skipping unknown validation key provider: ${provider}`);
+                    continue;
+                }
+                await storage.saveApiKey(provider, apiKey, true);
+                llmService.setValidationApiKey(provider, apiKey);
+                continue;
+            }
+
+            if (!llmService.providers?.[providerKey]) {
+                console.warn(`[ProjectIO] Skipping unknown key provider: ${providerKey}`);
+                continue;
+            }
+            await storage.saveApiKey(providerKey, apiKey, false);
+            llmService.setApiKey(providerKey, apiKey);
+        }
+    }
+
+    async _rollbackImportedProject(projectId) {
+        try {
+            await storage.clearSession(projectId);
+        } catch (error) {
+            console.warn(`[ProjectIO] Rollback: clearSession failed for ${projectId}`, error);
+        }
+        try {
+            await storage.deleteImages(projectId);
+        } catch (error) {
+            console.warn(`[ProjectIO] Rollback: deleteImages failed for ${projectId}`, error);
+        }
+        try {
+            await storage.deleteProject(projectId);
+        } catch (error) {
+            console.warn(`[ProjectIO] Rollback: deleteProject failed for ${projectId}`, error);
+        }
+
+        if (storage.getActiveProjectId?.() === projectId) {
+            storage.clearActiveProjectId();
+        }
     }
 }
 
