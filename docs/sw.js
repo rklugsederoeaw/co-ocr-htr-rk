@@ -3,7 +3,7 @@
  * Enables offline functionality by caching static assets
  */
 
-const CACHE_VERSION = 'coocr-v1';
+const CACHE_VERSION = 'coocr-v2';
 
 // Static assets to cache on install
 const STATIC_ASSETS = [
@@ -29,6 +29,7 @@ const STATIC_ASSETS = [
     './js/editor.js',
     './js/viewer.js',
     './js/ui.js',
+    './js/pwa-init.js',
     // JavaScript - Services
     './js/services/storage.js',
     './js/services/llm.js',
@@ -48,6 +49,11 @@ const STATIC_ASSETS = [
     './js/utils/constants.js',
     './js/utils/dom.js',
     './js/utils/textFormatting.js',
+    // Vendored libraries
+    './vendor/openseadragon/openseadragon.min.js',
+    './vendor/openseadragon/openseadragon-svg-overlay.js',
+    './vendor/jszip.min.js',
+    './vendor/fonts/fonts.css',
     // Assets
     './assets/logo.png',
     './assets/logo-icon.png'

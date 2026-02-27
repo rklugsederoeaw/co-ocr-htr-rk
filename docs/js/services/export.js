@@ -672,7 +672,7 @@ ${bodyLines.join('\n')}
      */
     async exportAllPagesZip(format, options = {}) {
         // Load JSZip dynamically (only when needed)
-        await this._loadScript('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js');
+        await this._loadScript('vendor/jszip.min.js');
 
         // Flush current page to pageTranscriptions before export
         await appState.saveSessionNow();

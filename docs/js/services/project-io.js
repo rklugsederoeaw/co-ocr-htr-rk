@@ -16,7 +16,7 @@ import {
     URL_REVOKE_DELAY
 } from '../utils/constants.js';
 
-const JSZIP_CDN = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+const JSZIP_SRC = 'vendor/jszip.min.js';
 const MAX_ARCHIVE_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
 const MAX_IMAGES_PER_ARCHIVE = 200;
 const MAX_ENTRY_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -32,7 +32,7 @@ class ProjectIOService {
         if (window.JSZip) return;
         return new Promise((resolve, reject) => {
             const script = document.createElement('script');
-            script.src = JSZIP_CDN;
+            script.src = JSZIP_SRC;
             script.onload = resolve;
             script.onerror = () => reject(new Error('Failed to load JSZip'));
             document.head.appendChild(script);

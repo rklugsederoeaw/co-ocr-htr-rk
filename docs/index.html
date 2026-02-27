@@ -8,6 +8,9 @@
         content="OCR/HTR & Image Description Workbench - Browser-based tool for historical document text recognition with expert-in-the-loop validation">
     <title>OCR/HTR & Image Description Workbench</title>
 
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.iiif.io https://*.bodleian.ox.ac.uk https://*.bnf.fr https://*.gallica.bnf.fr; connect-src 'self' https://generativelanguage.googleapis.com https://api.openai.com https://api.anthropic.com https://api.mistral.ai http://localhost:* https://*.iiif.io https://*.bodleian.ox.ac.uk https://*.bnf.fr https://*.gallica.bnf.fr; font-src 'self'; object-src 'none'; base-uri 'self'; worker-src 'self';">
+
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
 
@@ -18,12 +21,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="assets/logo-icon.png">
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <!-- Fonts (vendored) -->
+    <link rel="stylesheet" href="vendor/fonts/fonts.css">
 
     <!-- Styles -->
     <link rel="stylesheet" href="css/variables.css">
@@ -73,7 +72,7 @@
         <span class="wip-badge">BETA</span>
         <span class="wip-text">Work in Progress - Developed with <a href="https://lisa.gerda-henkel-stiftung.de/digitale_geschichte_pollin" target="_blank" rel="noopener" class="wip-method-link">Promptotyping</a></span>
         <a href="https://github.com/DigitalHumanitiesCraft/co-ocr-htr" target="_blank" rel="noopener" class="wip-link">GitHub</a>
-        <button class="wip-close" onclick="document.getElementById('wipBanner').hidden = true" aria-label="Close banner">
+        <button class="wip-close" id="wipCloseBtn" aria-label="Close banner">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
                 <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -436,7 +435,7 @@
             </div>
             <!-- Description Panel (collapsible, outside editorContent to survive innerHTML rebuilds) -->
             <details class="description-panel" id="descriptionPanel" hidden>
-                <summary class="description-summary" onclick="event.preventDefault()">
+                <summary class="description-summary" id="descriptionSummary">
                     <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                         <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -1903,17 +1902,14 @@
     <div id="toastContainer" class="toast-container"></div>
 
     <!-- SCRIPTS -->
-    <!-- OpenSeadragon - IIIF-compatible image viewer -->
-    <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1/build/openseadragon/openseadragon.min.js"></script>
-    <!-- OpenSeadragon SVG Overlay Plugin (from official OpenSeadragon GitHub) -->
-    <script src="https://openseadragon.github.io/svg-overlay/openseadragon-svg-overlay.js"></script>
+    <!-- OpenSeadragon - IIIF-compatible image viewer (vendored) -->
+    <script src="vendor/openseadragon/openseadragon.min.js"></script>
+    <!-- OpenSeadragon SVG Overlay Plugin (vendored) -->
+    <script src="vendor/openseadragon/openseadragon-svg-overlay.js"></script>
     <!-- App -->
     <script type="module" src="js/main.js"></script>
     <!-- PWA Support -->
-    <script type="module">
-        import { initPWA } from './js/pwa.js';
-        initPWA();
-    </script>
+    <script type="module" src="js/pwa-init.js"></script>
 </body>
 
 </html>

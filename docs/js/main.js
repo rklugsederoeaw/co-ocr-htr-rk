@@ -190,6 +190,14 @@ async function initApp() {
         }
     });
 
+    // Inline event handler replacements (CSP: no inline scripts)
+    document.getElementById('wipCloseBtn')?.addEventListener('click', () => {
+        document.getElementById('wipBanner').hidden = true;
+    });
+    document.getElementById('descriptionSummary')?.addEventListener('click', (e) => {
+        e.preventDefault();
+    });
+
     // Initialize samples menu
     await initSamplesMenu();
 

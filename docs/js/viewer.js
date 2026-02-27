@@ -26,7 +26,7 @@ export function initViewer() {
     // Initialize OpenSeadragon
     viewer = OpenSeadragon({
         id: 'osd-viewer',
-        prefixUrl: 'https://cdn.jsdelivr.net/npm/openseadragon@4.1/build/openseadragon/images/',
+        prefixUrl: 'vendor/openseadragon/images/',
 
         // No initial image
         tileSources: [],
