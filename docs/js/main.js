@@ -19,6 +19,7 @@ import { validationPanel } from './components/validation.js';
 import { contextManager } from './components/context.js';
 // eslint-disable-next-line no-unused-vars -- side-effect: auto-init thinking panel
 import { thinkingPanel } from './components/thinking.js';
+import { promptLibraryManager } from './components/promptLibrary.js';
 
 // Services
 import { storage } from './services/storage.js';
@@ -147,6 +148,7 @@ async function initApp() {
     initEditor();
     initUI();
     validationPanel.init();
+    promptLibraryManager.init();
     initPanelResize();
     initValidationResize();
 

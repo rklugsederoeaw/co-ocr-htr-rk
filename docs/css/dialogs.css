@@ -2157,3 +2157,149 @@ kbd {
   font-size: var(--text-sm);
   margin-bottom: var(--space-1);
 }
+
+/* ==========================================================================
+   PROMPT LIBRARY
+   ========================================================================== */
+
+.prompt-library-toolbar {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.prompt-library-toolbar.hidden {
+  display: none;
+}
+
+.prompt-library-list {
+  max-height: 45vh;
+  overflow-y: auto;
+}
+
+.prompt-library-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border-default);
+  align-items: center;
+  gap: var(--space-2);
+  transition: background var(--transition-fast);
+}
+
+.prompt-library-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.prompt-library-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prompt-library-item-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prompt-library-item-tags {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+.prompt-library-item-category {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-active);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.prompt-library-item-actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.prompt-library-item-actions .icon-btn.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.prompt-library-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.prompt-edit-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* Prompt action row (Load/Save from Library buttons) */
+.prompt-action-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Picker popup for "Load from Library" */
+.prompt-picker-popup {
+  position: fixed;
+  z-index: 10000;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  max-height: 260px;
+  overflow-y: auto;
+  min-width: 280px;
+  max-width: 400px;
+}
+
+.prompt-picker-header {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.prompt-picker-item {
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--text-sm);
+  transition: background var(--transition-fast);
+}
+
+.prompt-picker-item:last-child {
+  border-bottom: none;
+}
+
+.prompt-picker-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.prompt-picker-name {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Error state for required fields */
+.input-error {
+  border-color: var(--danger) !important;
+}

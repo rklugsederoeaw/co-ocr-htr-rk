@@ -67,6 +67,13 @@ class StorageService {
         if (!db.objectStoreNames.contains(IDB_STORES.API_KEYS)) {
           db.createObjectStore(IDB_STORES.API_KEYS, { keyPath: 'provider' });
         }
+
+        // prompts store (v2)
+        if (!db.objectStoreNames.contains(IDB_STORES.PROMPTS)) {
+          const promptStore = db.createObjectStore(IDB_STORES.PROMPTS, { keyPath: 'id' });
+          promptStore.createIndex('category', 'category', { unique: false });
+          promptStore.createIndex('updatedAt', 'updatedAt', { unique: false });
+        }
       };
 
       request.onsuccess = (event) => {
@@ -500,6 +507,65 @@ class StorageService {
    */
   async deleteAllApiKeys() {
     await this._withStore(IDB_STORES.API_KEYS, 'readwrite', (store) => store.clear());
+  }
+
+  // ============================================
+  // Prompt Library (IndexedDB)
+  // ============================================
+
+  /**
+   * List all prompts, optionally filtered by category
+   * @param {string|null} category - Filter by category, or null for all
+   * @returns {Promise<Array>}
+   */
+  async listPrompts(category = null) {
+    const db = await this._initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.PROMPTS, 'readonly');
+      const store = tx.objectStore(IDB_STORES.PROMPTS);
+      const request = category
+        ? store.index('category').getAll(category)
+        : store.getAll();
+      request.onsuccess = () => {
+        const prompts = request.result || [];
+        prompts.sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+        resolve(prompts);
+      };
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Get a single prompt by ID
+   * @param {string} id
+   * @returns {Promise<object|undefined>}
+   */
+  async getPrompt(id) {
+    return this._withStore(IDB_STORES.PROMPTS, 'readonly', (store) => store.get(id));
+  }
+
+  /**
+   * Save (create or update) a prompt
+   * @param {object} prompt - Prompt record with at least { id, name, category, text }
+   * @returns {Promise<object>} The saved record
+   */
+  async savePrompt(prompt) {
+    const now = new Date().toISOString();
+    const record = {
+      ...prompt,
+      updatedAt: now,
+      createdAt: prompt.createdAt || now
+    };
+    await this._withStore(IDB_STORES.PROMPTS, 'readwrite', (store) => store.put(record));
+    return record;
+  }
+
+  /**
+   * Delete a prompt by ID
+   * @param {string} id
+   */
+  async deletePrompt(id) {
+    await this._withStore(IDB_STORES.PROMPTS, 'readwrite', (store) => store.delete(id));
   }
 
   // ============================================

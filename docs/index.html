@@ -137,6 +137,15 @@
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                     </svg>
                 </button>
+                <button class="icon-btn icon-md" id="btnPromptLibrary" title="Prompt Library">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        <line x1="8" y1="7" x2="16" y2="7"></line>
+                        <line x1="8" y1="11" x2="16" y2="11"></line>
+                        <line x1="8" y1="15" x2="12" y2="15"></line>
+                    </svg>
+                </button>
                 <button class="icon-btn icon-md" title="Settings">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                         <circle cx="12" cy="12" r="3"></circle>
@@ -955,8 +964,10 @@
                     <div class="input-wrapper">
                         <label for="promptOverrideStage1">Stage 1 Override (Transcription)</label>
                         <textarea id="promptOverrideStage1" rows="5" placeholder="Optional custom prompt for Stage 1. Leave empty to use selected profile/default."></textarea>
-                        <div style="margin-top: 8px;">
+                        <div class="prompt-action-row" style="margin-top: 8px;">
                             <button type="button" class="btn btn-secondary btn-sm" id="resetPromptStage1">Reset Stage 1 Override</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="loadLibraryStage1">Load from Library</button>
+                            <button type="button" class="btn-link btn-sm" id="saveLibraryStage1">Save to Library</button>
                         </div>
                     </div>
                 </div>
@@ -1025,9 +1036,13 @@
             <div class="description-prompt-section">
                 <label for="descriptionPrompt">Analysis Prompt</label>
                 <textarea id="descriptionPrompt" rows="8" placeholder="Enter custom prompt or use default..."></textarea>
-                <button type="button" class="btn-link btn-sm" id="loadDefaultPrompt">
-                    Load Default Prompt
-                </button>
+                <div class="prompt-action-row">
+                    <button type="button" class="btn-link btn-sm" id="loadDefaultPrompt">
+                        Load Default Prompt
+                    </button>
+                    <button type="button" class="btn-link btn-sm" id="loadLibraryDescription">Load from Library</button>
+                    <button type="button" class="btn-link btn-sm" id="saveLibraryDescription">Save to Library</button>
+                </div>
             </div>
 
             <!-- Model Info (Gemini only) -->
@@ -1118,6 +1133,10 @@
                     <div class="custom-prompt-content">
                         <p class="custom-prompt-hint">Overrides the default LLM Review prompt. Use {text} as placeholder for the transcription.</p>
                         <textarea id="customValidationPrompt" class="custom-prompt-textarea" rows="6" placeholder="Analyze the following text for transcription errors...&#10;&#10;{text}&#10;&#10;Respond in JSON format with confidence, issues and summary."></textarea>
+                        <div class="prompt-action-row" style="margin-top: 8px;">
+                            <button type="button" class="btn-link btn-sm" id="loadLibraryValidation">Load from Library</button>
+                            <button type="button" class="btn-link btn-sm" id="saveLibraryValidation">Save to Library</button>
+                        </div>
                     </div>
                 </details>
             </div>
@@ -1154,14 +1173,18 @@
                         <p class="custom-prompt-hint">If filled, overrides replace profile/default prompts for the stage.</p>
                         <label for="promptOverrideStage2">Stage 2 Override (Paleographic Review)</label>
                         <textarea id="promptOverrideStage2" class="custom-prompt-textarea" rows="5" placeholder="Optional custom prompt for Stage 2"></textarea>
-                        <div style="margin-top: 8px; margin-bottom: 12px;">
+                        <div class="prompt-action-row" style="margin-top: 8px; margin-bottom: 12px;">
                             <button type="button" class="btn btn-secondary btn-sm" id="resetPromptStage2">Reset Stage 2 Override</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="loadLibraryStage2">Load from Library</button>
+                            <button type="button" class="btn-link btn-sm" id="saveLibraryStage2">Save to Library</button>
                         </div>
 
                         <label for="promptOverrideStage3">Stage 3 Override (Philological Review)</label>
                         <textarea id="promptOverrideStage3" class="custom-prompt-textarea" rows="5" placeholder="Optional custom prompt for Stage 3"></textarea>
-                        <div style="margin-top: 8px;">
+                        <div class="prompt-action-row" style="margin-top: 8px;">
                             <button type="button" class="btn btn-secondary btn-sm" id="resetPromptStage3">Reset Stage 3 Override</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="loadLibraryStage3">Load from Library</button>
+                            <button type="button" class="btn-link btn-sm" id="saveLibraryStage3">Save to Library</button>
                         </div>
                     </div>
                 </details>
@@ -1708,6 +1731,62 @@
                     </svg>
                     Load
                 </button>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- PROMPT LIBRARY DIALOG -->
+    <dialog id="promptLibraryDialog" class="dialog dialog-xl">
+        <div class="dialog-header">
+            <h2 class="dialog-title">Prompt Library</h2>
+            <button class="dialog-close" data-close-dialog aria-label="Close">
+                <svg class="icon-md"><use href="#icon-close"></use></svg>
+            </button>
+        </div>
+        <div class="dialog-body">
+            <div class="prompt-library-toolbar">
+                <select id="promptLibraryFilter" class="select-sm">
+                    <option value="">All Categories</option>
+                    <option value="transcription">Transcription (Stage 1)</option>
+                    <option value="description">Description</option>
+                    <option value="validation">LLM Review</option>
+                    <option value="stage2">Stage 2 (Paleographic)</option>
+                    <option value="stage3">Stage 3 (Philological)</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-sm" id="promptLibraryAdd">
+                    + New Prompt
+                </button>
+            </div>
+            <div id="promptLibraryList" class="prompt-library-list">
+                <!-- Rendered by JS -->
+            </div>
+            <div id="promptLibraryEdit" class="prompt-library-edit" hidden>
+                <div class="input-wrapper">
+                    <label for="promptEditName">Name</label>
+                    <input type="text" id="promptEditName" placeholder="My Custom Prompt">
+                </div>
+                <div class="input-wrapper">
+                    <label for="promptEditCategory">Category</label>
+                    <select id="promptEditCategory">
+                        <option value="transcription">Transcription (Stage 1)</option>
+                        <option value="description">Description</option>
+                        <option value="validation">LLM Review</option>
+                        <option value="stage2">Stage 2 (Paleographic)</option>
+                        <option value="stage3">Stage 3 (Philological)</option>
+                    </select>
+                </div>
+                <div class="input-wrapper">
+                    <label for="promptEditTags">Tags (optional, comma-separated)</label>
+                    <input type="text" id="promptEditTags" placeholder="latin, medieval, cursive">
+                </div>
+                <div class="input-wrapper">
+                    <label for="promptEditText">Prompt Text</label>
+                    <textarea id="promptEditText" rows="12"></textarea>
+                </div>
+                <div class="prompt-edit-actions">
+                    <button type="button" class="btn btn-secondary" id="promptEditCancel">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="promptEditSave">Save</button>
+                </div>
             </div>
         </div>
     </dialog>
