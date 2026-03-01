@@ -534,6 +534,12 @@
                      aria-label="Resize sections" tabindex="0"
                      data-above-idx="0" data-below-idx="1" hidden></div>
 
+                <!-- Reference Data Management (collapsible) -->
+                <details class="reference-data-section" style="padding: var(--space-1); border-bottom: 1px solid var(--border-color);">
+                    <summary class="text-xs" style="cursor: pointer; padding: var(--space-1); user-select: none;">Reference Data</summary>
+                    <div id="referenceDataPanel"></div>
+                </details>
+
                 <!-- Empty State -->
                 <div class="validation-empty-state" id="validationEmptyState">
                     <svg class="empty-state-icon validation-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -1146,6 +1152,18 @@
                         </div>
                     </div>
                 </details>
+            </div>
+
+            <!-- Reference Data (BM25) - only visible when collections exist -->
+            <div class="validate-options-section" id="referenceDataGroup" hidden>
+                <div class="validate-section-header">
+                    <h4 class="validate-section-title">Reference Data (BM25)</h4>
+                    <label class="validate-toggle">
+                        <input type="checkbox" id="includeReferenceData" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+                <p class="validate-section-hint">Retrieve relevant entries from reference collections to enrich LLM prompts</p>
             </div>
 
             <!-- Post-Processing Stage Toggles (only visible when pipeline feature flag is ON) -->

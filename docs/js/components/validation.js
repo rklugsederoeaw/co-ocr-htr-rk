@@ -14,6 +14,8 @@
 
 import { validationEngine } from '../services/validation.js';
 import { llmService, ISSUE_TYPES } from '../services/llm.js';
+import { bm25Service } from '../services/bm25.js';
+import { referenceService } from '../services/reference.js';
 import { FEATURE_FLAGS } from '../utils/constants.js';
 import { storage } from '../services/storage.js';
 import { appState } from '../state.js';
@@ -215,6 +217,9 @@ class ValidationPanel {
         // Show/hide stage toggles based on feature flag
         this.updateStageTogglesVisibility();
 
+        // Show/hide reference data option based on available collections
+        this.updateReferenceDataVisibility();
+
         // Show dialog
         if (this.validateDialog) {
             this.validateDialog.showModal();
@@ -313,6 +318,21 @@ class ValidationPanel {
         section.hidden = !FEATURE_FLAGS.postprocessPipelineV1;
     }
 
+    /**
+     * Show/hide reference data option based on available collections
+     */
+    async updateReferenceDataVisibility() {
+        const refGroup = getById('referenceDataGroup');
+        if (!refGroup) return;
+
+        try {
+            const collections = await referenceService.getActiveCollections();
+            refGroup.hidden = collections.length === 0;
+        } catch {
+            refGroup.hidden = true;
+        }
+    }
+
     getPromptConfigSafe() {
         if (typeof appState.getPromptConfig === 'function') {
             return appState.getPromptConfig();
@@ -390,6 +410,7 @@ class ValidationPanel {
             checkStats: getById('checkStats')?.checked ?? true,
             checkArtifacts: getById('checkArtifacts')?.checked ?? true,
             includeLLM: getById('enableLLM')?.checked ?? true,
+            includeReferenceData: getById('includeReferenceData')?.checked ?? true,
             customPrompt: getById('customValidationPrompt')?.value?.trim() || '',
             // Forward document context into LLM Review / postprocessing prompts.
             contextDescription: contextManager.buildPromptContext() || '',
@@ -540,6 +561,18 @@ class ValidationPanel {
         try {
             // Get options from dialog checkboxes
             const options = this.getValidationOptions();
+
+            // Auto-build BM25 index if reference data exists but index is not ready
+            if (options.includeReferenceData !== false && !bm25Service.isReady() && !bm25Service.isBuilding()) {
+                try {
+                    const collections = await referenceService.getActiveCollections();
+                    if (collections.length > 0) {
+                        await bm25Service.buildIndex();
+                    }
+                } catch (err) {
+                    console.warn('[Validation] BM25 auto-build failed:', err.message);
+                }
+            }
 
             // Override LLM option if no API key
             if (!llmService.hasApiKey()) {

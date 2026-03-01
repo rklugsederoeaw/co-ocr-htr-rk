@@ -21,6 +21,7 @@ import { contextManager } from './components/context.js';
 import { thinkingPanel } from './components/thinking.js';
 import { thinkingAnalysisManager } from './components/thinkingAnalysis.js';
 import { promptLibraryManager } from './components/promptLibrary.js';
+import { referenceUI } from './components/reference-ui.js';
 
 // Services
 import { storage } from './services/storage.js';
@@ -153,6 +154,7 @@ async function initApp() {
     initEditor();
     initUI();
     validationPanel.init();
+    referenceUI.init();
     promptLibraryManager.init();
     thinkingAnalysisManager.init();
     initPanelResize();

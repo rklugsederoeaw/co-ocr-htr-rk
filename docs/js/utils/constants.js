@@ -182,7 +182,7 @@ export const JPEG_QUALITY = 0.9;
 export const IDB_NAME = 'coocr-htr';
 
 /** IndexedDB schema version */
-export const IDB_VERSION = 2;
+export const IDB_VERSION = 3;
 
 /** IndexedDB object store names */
 export const IDB_STORES = {
@@ -190,7 +190,9 @@ export const IDB_STORES = {
   SESSIONS: 'sessions',
   IMAGES: 'images',
   API_KEYS: 'apiKeys',
-  PROMPTS: 'prompts'
+  PROMPTS: 'prompts',
+  REFERENCE_COLLECTIONS: 'referenceCollections',
+  REFERENCE_ENTRIES: 'referenceEntries'
 };
 
 /** localStorage key for active project ID (synchronous access at startup) */
