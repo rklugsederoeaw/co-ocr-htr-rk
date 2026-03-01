@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { ReferenceService } from '../js/services/reference.js';
-import { StorageService } from '../js/services/storage.js';
+import { StorageService } from '../js/services/storage.js'; // eslint-disable-line no-unused-vars -- used in vi.mock factory
 
 // Mock storage module to use fresh instances per test
 vi.mock('../js/services/storage.js', async () => {

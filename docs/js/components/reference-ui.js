@@ -103,7 +103,7 @@ class ReferenceUI {
             this._container.querySelectorAll('.ref-delete').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.dataset.id;
-                    if (confirm('Delete this reference collection?')) {
+                    if (window.confirm('Delete this reference collection?')) { // eslint-disable-line no-alert
                         await referenceService.deleteCollection(id);
                         bm25Service.dispose();
                         this.render();

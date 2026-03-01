@@ -1,4 +1,5 @@
 // MiniSearch v7.2.0 - vendored ESM build. See: https://github.com/lucaong/minisearch
+/* eslint-disable */
 /** @ignore */
 const ENTRIES = 'ENTRIES';
 /** @ignore */
