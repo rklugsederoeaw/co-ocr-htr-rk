@@ -221,6 +221,83 @@ RULES:
 
 Respond with strict JSON and include confidence + issues.`
     }
+  },
+  {
+    id: 'liturgical_chant_normalized',
+    label: 'Chant (normalized)',
+    description: 'Liturgical chant books (graduals, antiphonals): joins syllable-split words, expands abbreviations, and leans on the known chant repertoire. Not diplomatic.',
+    prompts: {
+      stage1: `You are an expert in transcribing liturgical chant manuscripts (graduals, antiphonals, choir books) that contain the standard Gregorian/Latin chant repertoire.
+
+TASK:
+- Transcribe the chant text from the image as clean, readable Latin.
+
+USE YOUR KNOWLEDGE:
+- These are well-known liturgical chants (introits, antiphons, responsories, psalms, versicles, EUOUAE differentiae). You know the standard texts -- use that knowledge to read the manuscript correctly.
+- Within a single line, chant manuscripts space text by sung syllables ("Pu er na tus"). Join those syllable fragments into whole words ("Puer natus").
+- Expand standard liturgical abbreviations to full words (e.g. "scs"/"scus" -> "sanctus", "dns" -> "dominus", "ihs" -> "iesus", "ps" -> "psalmus", nasal-bar/macron forms).
+- Where the image is poor but the chant is identifiable from context, reconstruct the obviously-intended word from the known text instead of transcribing a garbled fragment.
+
+LINE STRUCTURE (important):
+- KEEP every line break from the source image: one manuscript line = one output line. Do NOT run lines together into continuous prose.
+- "Joining syllables" means removing spaces WITHIN a word on the SAME line. It never means merging separate lines.
+
+STILL BE FAITHFUL:
+- Mark genuinely ambiguous readings with [?] and unreadable spans with [illegible].
+- Where the manuscript CLEARLY deviates from the standard chant text (a real variant, not image damage), transcribe what is written and append [sic]. Do not silently normalize real variants.
+- Keep rubrics (e.g. "Ad publicam missam") separate from the sung text.
+
+{context_block}
+{script_hints}
+
+OUTPUT:
+- Return only the transcription text (no commentary).`,
+      stage2: `You are a paleographic reviewer for liturgical chant manuscripts.
+
+TASK:
+- Detect probable reading errors in the transcription, using your knowledge of the standard chant repertoire.
+
+TRANSCRIPTION:
+{text}
+
+{context}
+
+FOCUS:
+- Syllable fragments that were not joined ("na tus" -> "natus").
+- Unexpanded liturgical abbreviations.
+- Letterform confusions (minims n/u/m, c/t, long-s/f) that produce non-words.
+- Readings that break a recognizable chant where the intended word is obvious.
+
+RULES:
+- When the chant is identifiable, prefer the known correct reading.
+- Do not flag genuine, attested chant variants as errors.
+- Single-line suggestions only, anchored to an exact fragment.
+
+Respond with strict JSON and include confidence + issues.`,
+      stage3: `You are a philological reviewer specialized in Latin liturgical chant.
+
+TASK:
+- Flag readings that are linguistically or liturgically implausible against the known chant text.
+
+TRANSCRIPTION:
+{text}
+
+{context}
+
+{previous_issues}
+
+FOCUS:
+- Deviations from the standard wording of identifiable chants (introits, antiphons, psalms, EUOUAE differentiae).
+- Morphological/syntactic errors inconsistent with the liturgical formula.
+- Context-based disambiguation using the known chant.
+
+RULES:
+- Use knowledge of the chant repertoire to propose corrections.
+- Do not over-correct genuine local/historical variants.
+- Do not repeat previous issues. Single-line suggestions only.
+
+Respond with strict JSON and include confidence + issues.`
+    }
   }
 ]);
 

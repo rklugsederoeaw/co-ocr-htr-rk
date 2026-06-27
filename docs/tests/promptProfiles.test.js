@@ -43,8 +43,8 @@ describe('Prompt Profiles', () => {
     // Profile catalog
     // ====================================================================
     describe('profile catalog', () => {
-        it('should contain exactly 3 profiles', () => {
-            expect(PROMPT_PROFILES).toHaveLength(3);
+        it('should contain exactly 4 profiles', () => {
+            expect(PROMPT_PROFILES).toHaveLength(4);
         });
 
         it('should include generic_default profile', () => {
@@ -57,6 +57,10 @@ describe('Prompt Profiles', () => {
 
         it('should include early_modern_letter profile', () => {
             expect(PROMPT_PROFILES.some(p => p.id === 'early_modern_letter')).toBe(true);
+        });
+
+        it('should include liturgical_chant_normalized profile', () => {
+            expect(PROMPT_PROFILES.some(p => p.id === 'liturgical_chant_normalized')).toBe(true);
         });
 
         it('should have unique IDs', () => {
