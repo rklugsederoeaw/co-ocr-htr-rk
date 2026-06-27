@@ -834,3 +834,41 @@ TEI-XML export had UTF-8 encoding issues (Umlauts displayed as `Ã¼`).
 const charset = mimeType.includes('xml') ? '; charset=utf-8' : '';
 const blob = new Blob([content], { type: mimeType + charset });
 ```
+
+## 2026-06-27 | Session 32: gemini-3.5-flash, Reference Data fixes, RAG framing, Chant profile
+
+### New model: gemini-3.5-flash
+
+Added to model lists (`llm.js`, `dialogs.js`, both `index.html` dropdowns).
+
+**Reasoning-leak fix:** `gemini-3.5-flash` reasons enough to exhaust `maxOutputTokens`, starving the answer; the transcription window then showed truncated reasoning instead of the transcription.
+
+- `maxOutputTokens` 8192 -> 32768 (`GEMINI_MAX_OUTPUT_TOKENS`); the budget is shared between thinking and answer tokens.
+- Never return a thought part as the answer (dropped the `|| responseParts[0]` fallback).
+- Check `finishReason`: throw a clear error on `MAX_TOKENS`-without-answer in both streaming and non-streaming paths.
+
+### Reference Data (BM25/RAG) bug fixes
+
+- **Delete:** replaced `window.confirm` (silently suppressed by browsers after repeated use) with `dialogManager.showConfirm`. Optimistic removal (row disappears immediately), `e.currentTarget` captured before the `await`.
+- **Large-collection delete:** record deleted FIRST so the collection disappears in ~1s even for 888k entries; `deleteReferenceEntries` now chunked (getAllKeys + 10k-batch transactions) like `saveReferenceEntries`, instead of one cursor mega-transaction.
+- **Index visibility:** persistent status line ("Index: N entries ready") + a test-search field in the panel; `bm25Service.indexedCount()`.
+- **Import field mapping:** `parseFile()` (raw records + columns) + `importRecords(mapping)`; `dialogManager.showFieldMapping()` dialog lets the user pick the indexed text field + label. Quote-aware CSV parsing (handles commas inside quoted fields). `full_text`/`cantus_id` auto-detected as defaults.
+- `minisearch.js`: removed dangling `//# sourceMappingURL` (404 warning; vendored without the .map).
+
+### Service worker disabled on localhost
+
+Cache-first SW served stale JS during development and threw "ServiceWorker intercepted the request" errors. `pwa.js` now unregisters the SW and clears caches on localhost instead of registering (PWA stays active on the deployed site). `sw.js` catch handler: null-guard `headers.get('accept')`.
+
+### RAG prompt framing
+
+The retrieved reference block was prepended into the `{text}` slot, so the LLM read it as part of the transcription. Now separated: reference block labelled as external context + `=== TRANSCRIPTION TO VALIDATE ===` marker + citation instruction (cite Source id) so usage is observable. Format fix: full-text entries (empty definition) listed as plain passages, not `"text" -> ` arrows. Diagnostic log in `_retrieveReferenceContext`: `[Validation] BM25 retrieval: N terms -> M hits`.
+
+**Key finding:** BM25 retrieval does not help syllable-split chant OCR ("na tus" vs "natus") -- whitespace tokenization means the words don't exist as tokens; fuzzy/prefix can't bridge word-splits. Verified: clean query -> hits, garbled OCR query -> 0 hits. See [[rag-chant-limitation]] in memory.
+
+### New prompt profile: "Chant (normalized)"
+
+`promptProfiles.js` -- for liturgical chant books. Instructs the LLM to use its knowledge of the standard chant repertoire, join syllable-split words (within a line; line breaks preserved), expand liturgical abbreviations, and reconstruct obvious words on poor vision -- while marking genuine manuscript variants with `[sic]`. Default profile unchanged.
+
+### Open for next session
+
+Several delete buttons elsewhere in the UI still do not work (beyond the Reference Data one fixed here). To investigate next session.

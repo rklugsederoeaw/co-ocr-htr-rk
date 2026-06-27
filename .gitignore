@@ -55,3 +55,5 @@ nul
 .claude/
 .playwright-mcp/
 start_server.sh
+# Local reference/test data (not part of the repo)
+chants*.csv
