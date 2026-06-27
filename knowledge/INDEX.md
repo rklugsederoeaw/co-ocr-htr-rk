@@ -22,6 +22,7 @@ knowledge/
 ├── VALIDATION.md          ← Hybrid validation
 ├── DATA-SCHEMA.md         ← Data structures
 ├── IMPLEMENTATION-PLAN.md ← Roadmap (complete)
+├── BM25-RETRIEVAL.md      ← Client-side BM25 RAG for LLM Review
 └── JOURNAL.md             ← Development log
 ```
 
@@ -40,6 +41,7 @@ knowledge/
 | [JOURNAL](JOURNAL.md) | What was done? | Everyone | - |
 | [SECURITY](SECURITY.md) | How is it secured? | Everyone | ARCHITECTURE |
 | [TESTING](TESTING.md) | How is it tested? | Development | ARCHITECTURE |
+| [BM25-RETRIEVAL](BM25-RETRIEVAL.md) | Client-side RAG? | Development | ARCHITECTURE, VALIDATION |
 
 ## Core Concepts (Quick Reference)
 

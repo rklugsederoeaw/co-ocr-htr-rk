@@ -8,6 +8,7 @@
 
 import { llmService } from './llm.js';
 import { runPostprocessing } from './postprocess.js';
+import { bm25Service } from './bm25.js';
 import { FEATURE_FLAGS } from '../utils/constants.js';
 
 // ============================================
@@ -310,9 +311,10 @@ class ValidationEngine {
      * @param {string} customPrompt - Optional custom validation prompt
      * @returns {Promise<object>} LLM validation result
      */
-    async validateWithLLM(text, customPrompt = '', streamOptions = {}) {
+    async validateWithLLM(text, customPrompt = '', streamOptions = {}, referenceContext = '') {
         try {
-            const result = await llmService.validate(text, { customPrompt, ...streamOptions });
+            const enrichedText = referenceContext ? `${referenceContext}\n\n${text}` : text;
+            const result = await llmService.validate(enrichedText, { customPrompt, ...streamOptions });
             const validationResult = {
                 confidence: result.confidence,
                 reasoning: result.reasoning,
@@ -347,7 +349,10 @@ class ValidationEngine {
      */
     async validateWithPostprocessing(text, options = {}) {
         try {
-            const result = await runPostprocessing(text, {
+            const enrichedText = options.referenceContext
+                ? `${options.referenceContext}\n\n${text}`
+                : text;
+            const result = await runPostprocessing(enrichedText, {
                 contextDescription: options.contextDescription || '',
                 runStage2: options.runStage2 !== false,
                 runStage3: options.runStage3 !== false,
@@ -358,7 +363,7 @@ class ValidationEngine {
             // If orchestrator signals both-stage fallback, use single-call review
             if (result.fallbackUsed) {
                 console.log('[Validation] Postprocessing failed, falling back to single LLM Review');
-                return await this.validateWithLLM(text, options.customPrompt || '');
+                return await this.validateWithLLM(text, options.customPrompt || '', options.streamOptions || {}, options.referenceContext || '');
             }
 
             return {
@@ -370,7 +375,7 @@ class ValidationEngine {
             };
         } catch (error) {
             console.error('[Validation] Postprocessing error, falling back:', error.message);
-            return await this.validateWithLLM(text, options.customPrompt || '');
+            return await this.validateWithLLM(text, options.customPrompt || '', options.streamOptions || {}, options.referenceContext || '');
         }
     }
 
@@ -394,6 +399,7 @@ class ValidationEngine {
             checkStats = true,
             checkArtifacts = true,
             includeLLM = true,
+            includeReferenceData = true,
             customPrompt = '',
             stream,
             onThinkingChunk
@@ -406,6 +412,11 @@ class ValidationEngine {
             artifacts: checkArtifacts
         });
 
+        let referenceContext = '';
+        if (includeLLM && includeReferenceData && bm25Service.isReady()) {
+            referenceContext = await this._retrieveReferenceContext(text, ruleResults);
+        }
+
         // Run LLM validation (if requested and API key available)
         let llmResult = null;
         if (includeLLM && llmService.hasApiKey()) {
@@ -414,9 +425,9 @@ class ValidationEngine {
             const streamOpts = stream ? { stream, onThinkingChunk } : {};
 
             if (FEATURE_FLAGS.postprocessPipelineV1 && !customPrompt) {
-                llmResult = await this.validateWithPostprocessing(text, options);
+                llmResult = await this.validateWithPostprocessing(text, { ...options, referenceContext });
             } else {
-                llmResult = await this.validateWithLLM(text, customPrompt, streamOpts);
+                llmResult = await this.validateWithLLM(text, customPrompt, streamOpts, referenceContext);
             }
         }
 
@@ -429,6 +440,137 @@ class ValidationEngine {
             summary,
             timestamp: new Date().toISOString()
         };
+    }
+
+    // ============================================
+    // BM25 Reference Retrieval (RAG)
+    // ============================================
+
+    /**
+     * Retrieve reference context via BM25 for LLM prompt enrichment.
+     * Extracts query terms from flagged lines, searches the index,
+     * and formats matching entries as structured prompt context.
+     * @param {string} text - Transcription text
+     * @param {Array} ruleResults - Results from rule-based validation
+     * @returns {Promise<string>} Formatted reference context for prompt
+     */
+    async _retrieveReferenceContext(text, ruleResults) {
+
+        const terms = this._extractQueryTerms(text, ruleResults);
+        if (terms.length === 0) return '';
+
+        try {
+            const results = await bm25Service.searchMultiple(terms, 5);
+            const uniqueHits = this._deduplicateHits(results);
+            return this._formatReferenceContext(uniqueHits, { maxEntries: 30 });
+        } catch (error) {
+            console.warn('[Validation] BM25 retrieval failed:', error.message);
+            return '';
+        }
+    }
+
+    /**
+     * Extract query terms from transcription text and rule results.
+     * Uses targeted strategy: words from flagged lines + uncertain markers.
+     * Falls back to sampling words from all lines when no flags exist.
+     * @param {string} text
+     * @param {Array} ruleResults
+     * @returns {Array<string>}
+     */
+    _extractQueryTerms(text, ruleResults) {
+        const terms = new Set();
+
+        // Get words from lines flagged by rules
+        const flaggedLines = new Set();
+        for (const rule of ruleResults) {
+            if (rule.passed && rule.lines?.length > 0) {
+                rule.lines.forEach(l => flaggedLines.add(l));
+            }
+        }
+
+        const textLines = text.split('\n');
+
+        if (flaggedLines.size > 0) {
+            // Targeted: extract words from flagged lines
+            for (const lineNum of flaggedLines) {
+                const line = textLines[lineNum - 1];
+                if (line) {
+                    const words = line.split(/\s+/).filter(w => w.length > 2);
+                    words.forEach(w => terms.add(w.replace(/[.,;:!?'"()[\]{}]/g, '')));
+                }
+            }
+        } else {
+            // Broad fallback: sample words from all lines
+            for (const line of textLines) {
+                const words = line.split(/\s+/).filter(w => w.length > 3);
+                words.forEach(w => terms.add(w.replace(/[.,;:!?'"()[\]{}]/g, '')));
+            }
+        }
+
+        // Limit to prevent excessive queries
+        return [...terms].filter(t => t.length > 1).slice(0, 50);
+    }
+
+    /**
+     * Deduplicate BM25 hits across multiple queries.
+     * Uses term+definition as dedup key, sorts by score descending.
+     * @param {Object} multiResults - Map of query -> hits
+     * @returns {Array}
+     */
+    _deduplicateHits(multiResults) {
+        const seen = new Set();
+        const hits = [];
+
+        for (const [_query, queryHits] of Object.entries(multiResults)) {
+            for (const hit of queryHits) {
+                const key = `${hit.term}|${hit.definition}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    hits.push(hit);
+                }
+            }
+        }
+
+        // Sort by score descending
+        hits.sort((a, b) => (b.score || 0) - (a.score || 0));
+        return hits;
+    }
+
+    /**
+     * Format BM25 hits as structured prompt context for LLM.
+     * Groups entries by source for readability.
+     * @param {Array} hits
+     * @param {object} options
+     * @returns {string}
+     */
+    _formatReferenceContext(hits, { maxEntries = 30 } = {}) {
+        if (hits.length === 0) return '';
+
+        const limited = hits.slice(0, maxEntries);
+
+        // Group by source/collection
+        const bySource = {};
+        for (const hit of limited) {
+            const source = hit.source || hit.collectionId || 'Reference';
+            if (!bySource[source]) bySource[source] = [];
+            bySource[source].push(hit);
+        }
+
+        let context = '## Reference Data\n\n';
+        context += 'The following entries from reference works may be relevant.\n';
+        context += 'Use them to verify uncertain readings where applicable.\n';
+        context += 'Do not assume every word must match a reference entry.\n\n';
+
+        for (const [source, sourceHits] of Object.entries(bySource)) {
+            context += `Source: ${source}\n`;
+            for (const hit of sourceHits) {
+                context += `- "${hit.term}" -> ${hit.definition}\n`;
+            }
+            context += '\n';
+        }
+
+        context += '---\n';
+        return context;
     }
 
     /**

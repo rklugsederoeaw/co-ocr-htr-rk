@@ -144,6 +144,7 @@ Design decisions are documented in `knowledge/`:
 | Validation system           | [VALIDATION.md](knowledge/VALIDATION.md)                 |
 | Data structures             | [DATA-SCHEMA.md](knowledge/DATA-SCHEMA.md)               |
 | HTR post-processing         | [HTR-POSTPROCESSING.md](knowledge/HTR-POSTPROCESSING.md) |
+| BM25 retrieval (RAG)        | [BM25-RETRIEVAL.md](knowledge/BM25-RETRIEVAL.md)         |
 
 ## Key Concepts
 

@@ -74,6 +74,21 @@ class StorageService {
           promptStore.createIndex('category', 'category', { unique: false });
           promptStore.createIndex('updatedAt', 'updatedAt', { unique: false });
         }
+
+        // referenceCollections store (v3) -- BM25 reference data
+        if (!db.objectStoreNames.contains(IDB_STORES.REFERENCE_COLLECTIONS)) {
+          const refCollStore = db.createObjectStore(IDB_STORES.REFERENCE_COLLECTIONS, { keyPath: 'id' });
+          refCollStore.createIndex('type', 'type', { unique: false });
+          refCollStore.createIndex('language', 'language', { unique: false });
+          refCollStore.createIndex('active', 'active', { unique: false });
+        }
+
+        // referenceEntries store (v3) -- individual dictionary/glossary entries
+        if (!db.objectStoreNames.contains(IDB_STORES.REFERENCE_ENTRIES)) {
+          const refEntryStore = db.createObjectStore(IDB_STORES.REFERENCE_ENTRIES, { autoIncrement: true });
+          refEntryStore.createIndex('collectionId', 'collectionId', { unique: false });
+          refEntryStore.createIndex('term', 'term', { unique: false });
+        }
       };
 
       request.onsuccess = (event) => {
@@ -605,6 +620,160 @@ class StorageService {
     delete settings.validationProvider;
     delete settings.validationModel;
     this.saveSettings(settings);
+  }
+
+  // ============================================
+  // Reference Collections & Entries (IndexedDB)
+  // ============================================
+
+  /**
+   * Save (create or update) a reference collection
+   * @param {object} collection - Collection metadata with at least { id }
+   */
+  async saveReferenceCollection(collection) {
+    await this._withStore(IDB_STORES.REFERENCE_COLLECTIONS, 'readwrite', (store) =>
+      store.put(collection)
+    );
+  }
+
+  /**
+   * Get a reference collection by ID
+   * @param {string} id
+   * @returns {Promise<object|undefined>}
+   */
+  async getReferenceCollection(id) {
+    return this._withStore(IDB_STORES.REFERENCE_COLLECTIONS, 'readonly', (store) => store.get(id));
+  }
+
+  /**
+   * List all reference collections
+   * @returns {Promise<Array>}
+   */
+  async listReferenceCollections() {
+    const db = await this._initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.REFERENCE_COLLECTIONS, 'readonly');
+      const store = tx.objectStore(IDB_STORES.REFERENCE_COLLECTIONS);
+      const request = store.getAll();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Delete a reference collection and all its entries
+   * @param {string} id
+   */
+  async deleteReferenceCollection(id) {
+    await this.deleteReferenceEntries(id);
+    await this._withStore(IDB_STORES.REFERENCE_COLLECTIONS, 'readwrite', (store) => store.delete(id));
+  }
+
+  /**
+   * Save reference entries in chunks to avoid transaction timeouts.
+   * @param {string} collectionId
+   * @param {Array} entries - Array of entry objects
+   */
+  async saveReferenceEntries(collectionId, entries) {
+    const CHUNK_SIZE = 5000;
+    const db = await this._initDB();
+
+    for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+      const chunk = entries.slice(i, i + CHUNK_SIZE);
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readwrite');
+        const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
+        for (const entry of chunk) {
+          store.put({ ...entry, collectionId });
+        }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+  }
+
+  /**
+   * Load reference entries for a collection using cursor-based chunked reading.
+   * Calls onChunk callback with each chunk of entries.
+   * @param {string} collectionId
+   * @param {function(Array): void} onChunk - Callback receiving entry chunks
+   * @returns {Promise<number>} Total entries loaded
+   */
+  async loadReferenceEntries(collectionId, onChunk) {
+    const db = await this._initDB();
+    const CHUNK_SIZE = 10000;
+
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readonly');
+      const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
+      const index = store.index('collectionId');
+      const request = index.openCursor(IDBKeyRange.only(collectionId));
+      let chunk = [];
+      let total = 0;
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          chunk.push(cursor.value);
+          total++;
+          if (chunk.length >= CHUNK_SIZE) {
+            if (onChunk) onChunk(chunk);
+            chunk = [];
+          }
+          cursor.continue();
+        } else {
+          // Flush remaining entries
+          if (chunk.length > 0 && onChunk) {
+            onChunk(chunk);
+          }
+          resolve(total);
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  /**
+   * Delete all reference entries for a collection
+   * @param {string} collectionId
+   */
+  async deleteReferenceEntries(collectionId) {
+    const db = await this._initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readwrite');
+      const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
+      const index = store.index('collectionId');
+      const request = index.openCursor(IDBKeyRange.only(collectionId));
+
+      request.onsuccess = (event) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+        }
+      };
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  /**
+   * Count reference entries for a collection
+   * @param {string} collectionId
+   * @returns {Promise<number>}
+   */
+  async countReferenceEntries(collectionId) {
+    const db = await this._initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readonly');
+      const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
+      const index = store.index('collectionId');
+      const request = index.count(IDBKeyRange.only(collectionId));
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
   }
 
   // ============================================
