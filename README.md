@@ -40,6 +40,7 @@ This fork is maintained by **Robert Klugseder** (Austrian Academy of Sciences, A
 - **Prompt Profiles** -- scenario-based prompt architecture for different document types
 - **Prompt Library** -- persistent prompt database (IndexedDB) for saving, organizing, and reusing prompts across all workflows
 - **Project export/import** (.coocr archive) for cross-browser/device transfer with optional encrypted API keys
+- **Reference Data & BM25 Retrieval** -- client-side RAG: import dictionaries/glossaries (JSON, CSV, TSV), build a BM25+ search index in a Web Worker, and enrich LLM Review prompts with matching reference entries
 - **Improved UX** with custom dialogs, storage quota display, and tooltips
 
 ## Quick Start
@@ -229,6 +230,23 @@ Key changes:
 
 ---
 
+### Fork Milestone 13: Reference Data & BM25 Retrieval (2026-06-27)
+
+Key changes:
+
+- Client-side BM25 retrieval (RAG) for enriching LLM Review with external reference data (ba7ece7)
+- Import reference collections from JSON, CSV, TSV files with automatic field mapping (ba7ece7)
+- BM25+ search via MiniSearch (vendored ESM, ~8KB) running in a Web Worker for non-blocking indexing up to 500K entries (ba7ece7)
+- Reference Data management panel: import, toggle on/off, delete collections, build index with progress (ba7ece7)
+- "Include Reference Data" checkbox in validation dialog for user-controlled RAG (ba7ece7)
+- IndexedDB schema v2 to v3: new `referenceCollections` and `referenceEntries` object stores with safe migration preserving existing data (5d2a7b4)
+- Query term extraction from flagged validation lines (targeted) with broad fallback for clean transcriptions (ba7ece7)
+- Deduplication and score-ranked formatting of BM25 hits as structured prompt context (ba7ece7)
+- Architecture plan: `knowledge/BM25-RETRIEVAL.md` (b0499cf)
+- Code review fixes: concurrent search callback routing by ID, fallback referenceContext forwarding, Promise rejection on errors/dispose (119a01b)
+
+---
+
 <!-- CHANGELOG_END -->
 
 ---
@@ -248,6 +266,7 @@ This fork extends that base with additional persistence, workflow, and UX capabi
 - **Import paths**: image upload, PAGE-XML, METS-XML, IIIF manifests
 - **Export formats**: TXT, JSON, Markdown, PAGE-XML, TEI-XML, ZIP (multi-page)
 - **Project export/import**: `.coocr` archive format for cross-browser/device transfer with optional AES-GCM encrypted API keys
+- **Reference Data & BM25 Retrieval**: client-side RAG -- import dictionaries, glossaries, abbreviation lists (JSON, CSV, TSV); BM25+ search in a Web Worker (MiniSearch, up to 500K entries); automatic prompt enrichment for LLM Review
 - **Project persistence**: IndexedDB-backed projects/sessions/images with quota display
 - **Multi-project workflow**: create, rename, switch, delete
 - **Optional API key persistence**: user-controlled storage in IndexedDB
@@ -468,6 +487,62 @@ After saving, the optimized prompt is available in the Prompt Library and can be
 
 ---
 
+### Reference Data & BM25 Retrieval
+
+The Reference Data feature allows importing external dictionaries, glossaries, and abbreviation lists to enrich LLM Review with domain-specific context. The system uses BM25+ text search (via MiniSearch in a Web Worker) to find matching reference entries and injects them into the LLM validation prompt -- a client-side Retrieval-Augmented Generation (RAG) pattern.
+
+**Supported file formats:**
+
+- **JSON**: flat array `[{term, definition}]` or nested with `entries`/`data` key; alternative field names (`word`, `headword`, `meaning`, `value`, `usage`) are auto-mapped
+- **CSV**: comma-separated with header row (`term,definition` or alternative headers)
+- **TSV**: tab-separated with header row
+
+**Import reference data:**
+
+1. In the **Reference Data** panel (below the validation panel), click **"Import"** (or **"Import Reference Data"** if no collections exist)
+2. Select a JSON, CSV, or TSV file
+3. The collection appears in the panel with name, entry count, and an active checkbox
+
+**Manage collections:**
+
+- **Toggle**: check/uncheck collections to include or exclude them from BM25 search
+- **Delete**: click the X button next to a collection (requires confirmation)
+- Toggling or deleting a collection invalidates the search index
+
+**Build the search index:**
+
+1. Click **"Build Index"** in the Reference Data panel
+2. Progress is shown as a percentage during indexing
+3. The index is built in a Web Worker (non-blocking, handles up to 500K entries)
+4. Alternatively, the index is auto-built when you run validation with "Include Reference Data" enabled
+
+**Use reference data during validation:**
+
+1. Click **"Validate"** to open the validation dialog
+2. Check **"Include Reference Data (BM25)"** (visible only when active collections exist)
+3. Run validation -- the system automatically:
+   - Extracts query terms from flagged lines (uncertain markers, abbreviations, artifacts)
+   - Falls back to broad word sampling when no lines are flagged
+   - Searches the BM25 index for matching reference entries
+   - Injects the top matches as structured context into the LLM Review prompt
+4. The LLM uses the reference entries to verify uncertain readings where applicable
+
+**Typical reference data sources:**
+
+- Latin dictionaries (e.g., Du Cange Glossarium)
+- Abbreviation lists (medieval manuscript abbreviations)
+- Place/person name registers
+- Domain-specific glossaries (legal terms, ecclesiastical vocabulary)
+
+**Technical details:**
+
+- All data stays in the browser (IndexedDB) -- no server required
+- MiniSearch (~8KB vendored ESM) provides BM25+ ranking with fuzzy matching and prefix search
+- Web Worker ensures indexing does not block the UI
+- Architecture plan: `knowledge/BM25-RETRIEVAL.md`
+
+---
+
 ### Responsive and Resizable Panels
 
 The 3-column layout (Viewer | Editor | Validation) is freely scalable.
@@ -532,12 +607,14 @@ Primary runtime network traffic is LLM API calls and optional IIIF resources.
   - `coocr:descriptionPrompt`
   - `coocr:validationPrompt`
   - `coocr:activeProjectId`
-- `IndexedDB` (`coocr-htr`, schema v2) stores structured project data:
+- `IndexedDB` (`coocr-htr`, schema v3) stores structured project data:
   - `projects`
   - `sessions`
   - `images`
   - `apiKeys` (optional, only when user enables persistence)
   - `prompts` (Prompt Library entries with category, tags, timestamps)
+  - `referenceCollections` (imported dictionaries/glossaries metadata)
+  - `referenceEntries` (individual dictionary/glossary entries for BM25 search)
 
 ### LLM and Validation Flow
 
@@ -564,6 +641,7 @@ Knowledge base in `knowledge/`:
 - [METHODOLOGY.md](knowledge/METHODOLOGY.md) - Scientific background
 - [ARCHITECTURE.md](knowledge/ARCHITECTURE.md) - Technical architecture
 - [VALIDATION.md](knowledge/VALIDATION.md) - Validation system
+- [BM25-RETRIEVAL.md](knowledge/BM25-RETRIEVAL.md) - Client-side BM25 retrieval (RAG)
 - [MODEL-LANDSCAPE.md](knowledge/MODEL-LANDSCAPE.md) - OCR/HTR model comparison
 
 ## Contributors
