@@ -166,11 +166,16 @@ self.addEventListener('fetch', event => {
                     });
             })
             .catch(() => {
-                // Network failed and not in cache
-                // Return offline fallback for HTML pages
-                if (event.request.headers.get('accept').includes('text/html')) {
+                // Network failed and not in cache.
+                // Return offline fallback for HTML navigations only. The Accept
+                // header can be null (e.g. module/worker requests), so guard it --
+                // otherwise this handler throws and the SW surfaces an
+                // "unexpected error" for the intercepted request.
+                const accept = event.request.headers.get('accept') || '';
+                if (accept.includes('text/html')) {
                     return caches.match('./index.html');
                 }
+                return Response.error();
             })
     );
 });

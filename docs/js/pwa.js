@@ -10,6 +10,24 @@ import { appState } from './state.js';
  * - Set up offline indicator
  */
 export async function initPWA() {
+    // On localhost the cache-first service worker serves stale files during
+    // development, which hides edits and can throw "ServiceWorker intercepted
+    // the request" errors from a corrupt cache. Unregister it and drop caches
+    // instead of registering. The PWA stays active on the deployed site.
+    const isLocalDev = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+    if (isLocalDev) {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
+        if (self.caches) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        setupOfflineIndicator();
+        return;
+    }
+
     // Register service worker
     if ('serviceWorker' in navigator) {
         try {
