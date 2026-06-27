@@ -23,13 +23,13 @@ Promptotyping project for coOCR/HTR set up. Initial structure: README.md (EN), C
 
 Material from prior Gemini 3 session analyzed. More extensive than expected:
 
-| Source | Assessment |
-|--------|------------|
+| Source                                                 | Assessment      |
+| ------------------------------------------------------ | --------------- |
 | Methodological foundations (LLM bias, Critical Expert) | Highly relevant |
-| Design system (detailed) | Highly relevant |
-| Architecture (modules, APIs) | Highly relevant |
-| Implementation plan (phases) | Moderate |
-| Working prototype (1400 LOC) | Highly relevant |
+| Design system (detailed)                               | Highly relevant |
+| Architecture (modules, APIs)                           | Highly relevant |
+| Implementation plan (phases)                           | Moderate        |
+| Working prototype (1400 LOC)                           | Highly relevant |
 
 **Key findings:** Categorical instead of numeric confidence (based on LLM bias research), validation perspectives (paleographic, linguistic, etc.), event-based text-image synchronization.
 
@@ -38,6 +38,7 @@ Material from prior Gemini 3 session analyzed. More extensive than expected:
 Everything integrated into shared `knowledge/` folder: INDEX.md (navigation, document matrix), METHODOLOGY.md, DESIGN-SYSTEM.md, ARCHITECTURE.md, VALIDATION.md, DATA-SCHEMA.md. Prototype moved to `src/index.html`.
 
 **Document relationships:**
+
 ```
 METHODOLOGY → DESIGN-SYSTEM (color coding)
             → ARCHITECTURE (technology decisions)
@@ -78,16 +79,16 @@ Three datasets with PAGE-XML standard: Raitbuch 2 (account book 16th/17th c., 12
 
 ### Design Decisions
 
-| Question | Decision |
-|----------|----------|
-| LLM providers | Gemini 2.5 Flash, GPT-4.5 Mini, Haiku 4.5, DeepSeek (local+API) |
-| API key storage | LocalStorage (simple) |
-| Data formats | Images + PAGE-XML |
-| Export formats | .txt, .json, .md (PAGE-XML as expansion stage) |
-| Validation | Rule-based Validation + LLM Review parallel |
-| Tests | Vitest (Claude's recommendation) |
-| DeepSeek | Both (API + Ollama local) |
-| Deployment | GitHub Pages + local file:// |
+| Question        | Decision                                                        |
+| --------------- | --------------------------------------------------------------- |
+| LLM providers   | Gemini 2.5 Flash, GPT-4.5 Mini, Haiku 4.5, DeepSeek (local+API) |
+| API key storage | LocalStorage (simple)                                           |
+| Data formats    | Images + PAGE-XML                                               |
+| Export formats  | .txt, .json, .md (PAGE-XML as expansion stage)                  |
+| Validation      | Rule-based Validation + LLM Review parallel                     |
+| Tests           | Vitest (Claude's recommendation)                                |
+| DeepSeek        | Both (API + Ollama local)                                       |
+| Deployment      | GitHub Pages + local file://                                    |
 
 ### Milestone 0: Preparation
 
@@ -159,13 +160,13 @@ Samples dropdown in header ("Demo" button), viewer empty state with icon/title/d
 
 ### Bugs Fixed
 
-| Bug | Cause | Solution |
-|-----|-------|----------|
-| `appState.setUI is not a function` | Method does not exist | Replaced with `setLoading()`, `openDialog()`, `closeDialog()` |
-| `validationPanel.init is not a function` | Init call missing | Added `validationPanel.init()` in main.js |
-| `rgba(var(--bg-rgb))` broken | `--bg-rgb` variable missing | Added RGB variants in variables.css |
-| Zoom not working | Stale state reference | Used `appState.zoom` getter |
-| Export dialog backdrop missing | `.dialog-container` wrapper missing | Corrected HTML structure |
+| Bug                                      | Cause                               | Solution                                                      |
+| ---------------------------------------- | ----------------------------------- | ------------------------------------------------------------- |
+| `appState.setUI is not a function`       | Method does not exist               | Replaced with `setLoading()`, `openDialog()`, `closeDialog()` |
+| `validationPanel.init is not a function` | Init call missing                   | Added `validationPanel.init()` in main.js                     |
+| `rgba(var(--bg-rgb))` broken             | `--bg-rgb` variable missing         | Added RGB variants in variables.css                           |
+| Zoom not working                         | Stale state reference               | Used `appState.zoom` getter                                   |
+| Export dialog backdrop missing           | `.dialog-container` wrapper missing | Corrected HTML structure                                      |
 
 ### Deployment
 
@@ -204,6 +205,7 @@ Monolithic 1530-line `styles.css` split into: variables.css (~110), base.css (~1
 Three stages: Dark (#0d1117, GitHub Dark) → Cold Light (#f5f5f5, user request) → Warm Editorial (final).
 
 **Warm Editorial palette:**
+
 - Backgrounds: `#faf8f5` (cream), `#ffffff` (panels), `#f0ebe3` (viewer, paper-like)
 - Text: `#3d3229` (dark warm brown), `#8a7e72` (medium gray-brown)
 - Status: `#5a8a5a` (muted forest green), `#c4973a` (warm amber/gold), `#b85c4a` (muted terracotta)
@@ -216,14 +218,14 @@ Three stages: Dark (#0d1117, GitHub Dark) → Cold Light (#f5f5f5, user request)
 
 ### UI Analysis: 6 Problems Identified and Fixed
 
-| Problem | Severity | Cause | Solution |
-|---------|----------|-------|----------|
-| Transcription not displayed | Critical | `transcriptionComplete` event not handled after demo load | `documentLoaded` listener checks existing transcription |
-| Panel hints don't disappear | Medium | Timing issue with `appState.hasDocument` | New `documentLoaded` handler checks segments |
-| Viewer background too dark | Medium | Already using `var(--bg-viewer)`, no inline override | No fix needed |
-| Toolbar barely visible | Medium | Insufficient contrast | White background, primary text color, larger shadow |
-| Bounding box colors too cold | Low | Not matching warm theme | New variables: `--region-stroke: #8b7355` (sienna) |
-| Tooltip clipped | Low | CSS overflow | Fixed |
+| Problem                      | Severity | Cause                                                     | Solution                                                |
+| ---------------------------- | -------- | --------------------------------------------------------- | ------------------------------------------------------- |
+| Transcription not displayed  | Critical | `transcriptionComplete` event not handled after demo load | `documentLoaded` listener checks existing transcription |
+| Panel hints don't disappear  | Medium   | Timing issue with `appState.hasDocument`                  | New `documentLoaded` handler checks segments            |
+| Viewer background too dark   | Medium   | Already using `var(--bg-viewer)`, no inline override      | No fix needed                                           |
+| Toolbar barely visible       | Medium   | Insufficient contrast                                     | White background, primary text color, larger shadow     |
+| Bounding box colors too cold | Low      | Not matching warm theme                                   | New variables: `--region-stroke: #8b7355` (sienna)      |
+| Tooltip clipped              | Low      | CSS overflow                                              | Fixed                                                   |
 
 ### Settings & Help Dialogs
 
@@ -253,13 +255,13 @@ New variables: `--brand-gold: #b89850`, `--brand-brown: #3d3229`, plus overlays 
 
 **Color function matrix (clear separation):**
 
-| Category | Purpose | Colors |
-|----------|---------|--------|
-| Brand | Identity | Gold `#b89850`, Brown `#3d3229` |
-| Accent | Interactive | Steel Blue `#4a7c9b` |
-| Status | Confidence | Green/Amber/Terracotta |
-| Neutral | Layout | Cream/White/Brown |
-| Region | Annotations | Sienna `#8b7355` |
+| Category | Purpose     | Colors                          |
+| -------- | ----------- | ------------------------------- |
+| Brand    | Identity    | Gold `#b89850`, Brown `#3d3229` |
+| Accent   | Interactive | Steel Blue `#4a7c9b`            |
+| Status   | Confidence  | Green/Amber/Terracotta          |
+| Neutral  | Layout      | Cream/White/Brown               |
+| Region   | Annotations | Sienna `#8b7355`                |
 
 ---
 
@@ -291,11 +293,11 @@ Empty state not visible on fresh start (Incognito). Fix: z-index and click handl
 
 ### Further Bugs Identified
 
-| Bug | Cause |
-|-----|-------|
-| PAGE-XML word fragments | Wrong TextEquiv in page-xml.js |
+| Bug                           | Cause                                |
+| ----------------------------- | ------------------------------------ |
+| PAGE-XML word fragments       | Wrong TextEquiv in page-xml.js       |
 | Table prompt used for letters | Single prompt for all document types |
-| Validation initially visible | Missing conditional display |
+| Validation initially visible  | Missing conditional display          |
 
 ### Requirements Document
 
@@ -433,12 +435,12 @@ Grid editor replaced with textarea. New features: synced line numbers, visible u
 
 **Provider-model mapping:**
 
-| Provider | Models | Notes |
-|----------|--------|-------|
-| Google Gemini | gemini-3-flash-preview, gemini-3-pro-preview | Cloud, API key required |
-| OpenAI | gpt-4o, gpt-4o-mini | Cloud, API key required |
-| Anthropic | claude-4.5-sonnet, claude-4.5-haiku, claude-4.5-opus | Cloud, API key required |
-| Ollama | deepseek-ocr (recommended), llava, llama3.2-vision | Local, no API key |
+| Provider      | Models                                               | Notes                   |
+| ------------- | ---------------------------------------------------- | ----------------------- |
+| Google Gemini | gemini-3-flash-preview, gemini-3-pro-preview         | Cloud, API key required |
+| OpenAI        | gpt-4o, gpt-4o-mini                                  | Cloud, API key required |
+| Anthropic     | claude-4.5-sonnet, claude-4.5-haiku, claude-4.5-opus | Cloud, API key required |
+| Ollama        | deepseek-ocr (recommended), llava, llama3.2-vision   | Local, no API key       |
 
 ### DeepSeek-OCR Correction
 
@@ -502,15 +504,16 @@ Gemini 3 Pro leads significantly among closed models. LightOnOCR-2 is state-of-t
 
 ### Web Research Results
 
-| Model | Details |
-|-------|---------|
-| LightOnOCR-2 | 1B parameters, SotA on OlmOCR-Bench (83.2), Apache 2.0 |
-| Gemini 3 Pro | "Solves" English HTR (18th–19th c.), error rate comparable to best humans |
-| Gemini 3 Flash Agentic Vision | Think-Act-Observe loop, 5–10% quality improvement |
-| dots.ocr | 1.7B, 100+ languages, MIT license, best layout recognition |
-| DeepSeek OCR 2 | 3B, good for simple layouts, handwriting limitations |
+| Model                         | Details                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------- |
+| LightOnOCR-2                  | 1B parameters, SotA on OlmOCR-Bench (83.2), Apache 2.0                    |
+| Gemini 3 Pro                  | "Solves" English HTR (18th–19th c.), error rate comparable to best humans |
+| Gemini 3 Flash Agentic Vision | Think-Act-Observe loop, 5–10% quality improvement                         |
+| dots.ocr                      | 1.7B, 100+ languages, MIT license, best layout recognition                |
+| DeepSeek OCR 2                | 3B, good for simple layouts, handwriting limitations                      |
 
 **Sources:**
+
 - LightOnOCR-2: https://huggingface.co/lightonai/LightOnOCR-2-1B
 - Gemini 3 Pro Vision: https://blog.google/technology/developers/gemini-3-pro-vision/
 - Gemini 3 HTR Analysis: https://generativehistory.substack.com/p/gemini-3-solves-handwriting-recognition
@@ -537,13 +540,13 @@ Radio buttons for page selection ("Current page only" / "All pages"). Warning wi
 
 ### Design Decisions
 
-| Decision | Rationale |
-|----------|-----------|
-| 500ms delay between pages | Rate limit prevention |
-| 30s pause on rate limit | Automatic recovery instead of abort |
-| Auth error aborts batch | No pointless processing without API key |
-| Default "current page" | Encourages testing before batch |
-| ~1000 tokens/page estimate | Conservative average for warning |
+| Decision                   | Rationale                               |
+| -------------------------- | --------------------------------------- |
+| 500ms delay between pages  | Rate limit prevention                   |
+| 30s pause on rate limit    | Automatic recovery instead of abort     |
+| Auth error aborts batch    | No pointless processing without API key |
+| Default "current page"     | Encourages testing before batch         |
+| ~1000 tokens/page estimate | Conservative average for warning        |
 
 ---
 
@@ -740,6 +743,7 @@ Floating panel (bottom right): operation title, counter (3/6), progress bar, abo
 Complete restructuring of the Knowledge Vault overview page.
 
 **Design Principles (5 items, 3+2 grid layout):**
+
 1. Critical Expert in the Loop - explicit mention of hallucination and sycophancy, LLM literacy required
 2. Hybrid Validation - deterministic Validation + LLM Review, categorical confidence integrated
 3. Workflow-Agnostic - PAGE-XML import/export, multiple formats, pipeline integration
@@ -747,14 +751,17 @@ Complete restructuring of the Knowledge Vault overview page.
 5. Cloud & Local Models (new) - provider choice between cloud LLMs and local Ollama
 
 **Development Methodology:**
+
 - Promptotyping with agentic coding using Claude Code + Opus 4.5
 - Link to L.I.S.A. (Gerda Henkel Stiftung) blog
 
 **CSS Changes:**
+
 - New `.five-items` grid class for 3+2 layout (6-column grid, first row spans 2 each, second row centered)
 - Responsive fallback to single column on mobile
 
 **Content improvements:**
+
 - Removed product references (Transkribus) from workflow description
 - Removed empty marketing phrases ("robust quality assurance")
 - Added concrete examples (dates, currency, historical spelling)
@@ -771,12 +778,14 @@ Systematic verification of design principles against codebase. All 5 principles 
 ### Methodology Documentation
 
 **Interface Design Theory updated:**
+
 - Removed Shneiderman "Overview first" (not applicable to workbench UI)
 - Removed Coordinated Multiple Views reference (too academic)
 - Added Direct Manipulation (Shneiderman 1983) - fits editor paradigm
 - Added Gulfs of Execution & Evaluation (Norman 1986) - explains minimal UI goal
 
 **Knowledge Hierarchy (AIL-ML Framework):**
+
 - Integrated from Agent-in-the-Loop ML paper (Gao et al. 2025)
 - Key insight: General Users < LLMs < Domain Experts
 - Epistemic asymmetry justifies Expert-in-the-Loop approach
@@ -787,12 +796,14 @@ Systematic verification of design principles against codebase. All 5 principles 
 New feature: App asks before restoring saved session on startup.
 
 **Components:**
+
 - `appState.hasSavedSession()` - checks if session exists
 - `appState.restoreSession()` - restores on user confirmation
 - `dialogManager.showConfirm()` - new reusable confirm dialog with icon support
 - Structured display: timestamp, filename, transcription status
 
 **Design:**
+
 - Icon support (restore, warning, info, question)
 - Relative time for recent sessions (<7 days), absolute date for older
 - Session info with label-value pairs, filename in mono font
@@ -800,11 +811,13 @@ New feature: App asks before restoring saved session on startup.
 ### Multi-Page Navigation Bugfixes
 
 **Issues fixed:**
+
 1. Page navigation visible after switching from multi-page to single-page document
 2. Old regions (bounding boxes) persisted when loading new document
 3. Page strip too narrow for many pages (82+ in IIIF samples)
 
 **Solutions:**
+
 - `updatePageNavigation()` called on `documentLoaded` event
 - `regionsChanged` event emitted when clearing regions in `setDocument()`
 - Multi-page data reset in `setDocument()`: pages, currentPageIndex, pageTranscriptions, batchTranscriptions, batchValidations
@@ -816,6 +829,7 @@ New feature: App asks before restoring saved session on startup.
 TEI-XML export had UTF-8 encoding issues (Umlauts displayed as `Ã¼`).
 
 **Fix:** Added charset declaration to Blob creation:
+
 ```javascript
 const charset = mimeType.includes('xml') ? '; charset=utf-8' : '';
 const blob = new Blob([content], { type: mimeType + charset });

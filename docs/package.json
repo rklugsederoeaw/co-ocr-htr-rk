@@ -4,7 +4,8 @@
   "description": "Browser-based OCR/HTR workbench with expert-in-the-loop validation",
   "type": "module",
   "scripts": {
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "lint": "eslint js/ tests/",
