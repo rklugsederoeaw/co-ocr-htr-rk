@@ -15,6 +15,7 @@ import { DEFAULT_OLLAMA_ENDPOINT } from '../utils/constants.js';
 
 // Model-to-provider mapping for simplified UI
 const MODEL_PROVIDER_MAP = {
+    'gemini-3.5-flash': 'gemini',
     'gemini-3-flash-preview': 'gemini',
     'gemini-3-pro-preview': 'gemini',
     'mistral-ocr-latest': 'mistral',
@@ -1574,7 +1575,9 @@ class DialogManager {
         let displayName = model;
 
         // Shorten common model names
-        if (model.includes('gemini-3-flash')) {
+        if (model.includes('gemini-3.5-flash')) {
+            displayName = 'Gemini 3.5 Flash';
+        } else if (model.includes('gemini-3-flash')) {
             displayName = 'Gemini Flash';
         } else if (model.includes('gemini-3-pro')) {
             displayName = 'Gemini Pro';

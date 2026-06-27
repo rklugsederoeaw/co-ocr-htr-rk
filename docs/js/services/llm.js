@@ -17,6 +17,14 @@ import { DEFAULT_PROMPT_PROFILE_ID, getPromptProfileById } from '../config/promp
 /** Timeout for cloud LLM API calls (240 seconds -- HTR with large documents needs time) */
 const CLOUD_TIMEOUT_MS = 240_000;
 
+/**
+ * Max output tokens for Gemini calls. This budget is SHARED between thinking
+ * tokens and the answer on Gemini 3.x thinking models. 8192 starves the answer
+ * when the model reasons a lot (e.g. gemini-3.5-flash), so the transcription
+ * gets truncated and only reasoning remains. 3.x Flash supports up to 65536.
+ */
+const GEMINI_MAX_OUTPUT_TOKENS = 32768;
+
 /** Timeout for local Ollama calls (480 seconds -- local inference is significantly slower) */
 const OLLAMA_TIMEOUT_MS = 480_000;
 
@@ -421,6 +429,7 @@ const PROVIDERS = {
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent',
     defaultModel: 'gemini-3-flash-preview',
     models: [
+      { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash (fast)' },
       { id: 'gemini-3-flash-preview', name: 'Gemini 3 Flash (fast)', recommended: true },
       { id: 'gemini-3-pro-preview', name: 'Gemini 3 Pro (best quality)' },
       { id: 'custom', name: 'Custom model...', hint: 'Any Gemini model ID' }
@@ -1291,7 +1300,7 @@ class LLMService {
         // Gemini 3: Temperature should be 1.0 for best results
         // Lower values can cause unexpected behavior
         temperature: 1.0,
-        maxOutputTokens: 8192
+        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
       }
     };
 
@@ -1328,12 +1337,18 @@ class LLMService {
     }
 
     const data = await response.json();
+    const finishReason = data.candidates?.[0]?.finishReason;
     // When thinking is enabled, response contains both thinking parts (thought:true)
-    // and text parts. Find the first non-thinking part for the actual response.
+    // and text parts. Take ONLY a real answer part -- never fall back to a thought
+    // part, or the reasoning would be shown as the transcription.
     const responseParts = data.candidates?.[0]?.content?.parts || [];
-    const textPart = responseParts.find(p => !p.thought) || responseParts[0] || {};
-    const text = textPart.text || '';
-    console.log(`[Gemini] Response OK, length=${text.length} chars`);
+    const textPart = responseParts.find(p => p.text !== undefined && !p.thought);
+    const text = textPart?.text || '';
+    if (finishReason === 'MAX_TOKENS' && !text) {
+      // Budget exhausted by reasoning before any answer was produced.
+      throw new Error('Gemini hit the output token limit while reasoning, before producing a transcription. Try a lower thinking level or a shorter page.');
+    }
+    console.log(`[Gemini] Response OK, length=${text.length} chars, finishReason=${finishReason}`);
     return text;
   }
 
@@ -1364,7 +1379,7 @@ class LLMService {
       contents: [{ parts }],
       generationConfig: {
         temperature: 1.0,
-        maxOutputTokens: 8192
+        maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS
       }
     };
 
@@ -1402,6 +1417,7 @@ class LLMService {
     const decoder = new TextDecoder();
     let fullText = '';
     let buffer = '';
+    let finishReason;
 
     try {
       while (true) {
@@ -1422,6 +1438,9 @@ class LLMService {
 
           try {
             const chunk = JSON.parse(jsonStr);
+            if (chunk.candidates?.[0]?.finishReason) {
+              finishReason = chunk.candidates[0].finishReason;
+            }
             const parts = chunk.candidates?.[0]?.content?.parts || [];
 
             for (const part of parts) {
@@ -1440,6 +1459,14 @@ class LLMService {
       }
     } finally {
       reader.releaseLock();
+    }
+
+    console.log(`[Gemini] Stream done, length=${fullText.length} chars, finishReason=${finishReason}`);
+    if (finishReason === 'MAX_TOKENS' && !fullText.trim()) {
+      // Reasoning consumed the whole token budget before any answer streamed.
+      // Throw so the caller falls back / surfaces a clear error instead of an
+      // empty or reasoning-only transcription.
+      throw new Error('Gemini hit the output token limit while reasoning, before producing a transcription. Try a lower thinking level or a shorter page.');
     }
 
     return fullText;
