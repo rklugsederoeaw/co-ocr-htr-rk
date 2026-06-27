@@ -2057,6 +2057,66 @@ class DialogManager {
     }
 
     /**
+     * Ask the user which field of an imported file to index and which to use as
+     * a label. Returns the chosen mapping, or null if cancelled.
+     * @param {string} fileName
+     * @param {string[]} columns - available field/column names
+     * @param {{text?: string, label?: string}} defaults - pre-selected fields
+     * @returns {Promise<{textField: string, labelField: string}|null>}
+     */
+    showFieldMapping(fileName, columns, defaults = {}) {
+        return new Promise((resolve) => {
+            const opt = (cols, selected) => cols.map(c =>
+                `<option value="${escapeHtml(c)}" ${c === selected ? 'selected' : ''}>${escapeHtml(c)}</option>`
+            ).join('');
+
+            const dialog = document.createElement('dialog');
+            dialog.className = 'confirm-dialog glass-panel';
+            dialog.innerHTML = `
+                <div class="dialog-header">
+                    <h3>Map fields for "${escapeHtml(fileName)}"</h3>
+                </div>
+                <div class="dialog-body">
+                    <p class="text-secondary text-sm">Choose which field is searched (indexed) and which labels each entry.</p>
+                    <label class="form-label" style="display:block; margin-top: var(--space-2);">
+                        Text to index (searched against the transcription)
+                        <select id="mapTextField" class="input" style="width:100%; margin-top:4px;">${opt(columns, defaults.text)}</select>
+                    </label>
+                    <label class="form-label" style="display:block; margin-top: var(--space-2);">
+                        Label (optional, shown with each hit)
+                        <select id="mapLabelField" class="input" style="width:100%; margin-top:4px;">
+                            <option value="">(none)</option>
+                            ${opt(columns, defaults.label)}
+                        </select>
+                    </label>
+                </div>
+                <div class="dialog-actions">
+                    <button class="btn btn-ghost" data-action="cancel">Cancel</button>
+                    <button class="btn btn-primary" data-action="confirm">Import</button>
+                </div>
+            `;
+
+            const close = (value) => { dialog.close(); dialog.remove(); resolve(value); };
+
+            dialog.addEventListener('click', (e) => {
+                const action = e.target.dataset.action;
+                if (action === 'confirm') {
+                    close({
+                        textField: dialog.querySelector('#mapTextField').value,
+                        labelField: dialog.querySelector('#mapLabelField').value
+                    });
+                } else if (action === 'cancel') {
+                    close(null);
+                }
+            });
+            dialog.addEventListener('cancel', (e) => { e.preventDefault(); close(null); });
+
+            document.body.appendChild(dialog);
+            dialog.showModal();
+        });
+    }
+
+    /**
      * Show a prompt dialog for user input
      * @param {string} title - Dialog title
      * @param {string} message - Dialog message

@@ -115,6 +115,126 @@ class ReferenceService {
     }
 
     /**
+     * Split a single delimited line, honouring double-quoted fields that contain
+     * the delimiter and escaped quotes (""). ponytail: single-line only -- a
+     * quoted field spanning newlines isn't handled; switch to a streaming CSV
+     * parser if such data shows up.
+     */
+    _splitCSVLine(line, delimiter) {
+        const out = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const c = line[i];
+            if (inQuotes) {
+                if (c === '"') {
+                    if (line[i + 1] === '"') { cur += '"'; i++; }
+                    else inQuotes = false;
+                } else { cur += c; }
+            } else if (c === '"') {
+                inQuotes = true;
+            } else if (c === delimiter) {
+                out.push(cur); cur = '';
+            } else {
+                cur += c;
+            }
+        }
+        out.push(cur);
+        return out;
+    }
+
+    /**
+     * Parse a file into raw records (objects keyed by their original
+     * column/field names) plus the list of available field names, WITHOUT
+     * mapping to a fixed schema. Used by the import field-picker.
+     * @param {File} file
+     * @returns {Promise<{ext: string, columns: string[], records: object[]}>}
+     */
+    async parseFile(file) {
+        const text = await file.text();
+        const ext = file.name.split('.').pop().toLowerCase();
+        let records;
+        if (ext === 'json') {
+            records = this._parseJSONRaw(text);
+        } else if (ext === 'csv') {
+            records = this._parseDelimitedRaw(text, ',');
+        } else if (ext === 'tsv' || ext === 'txt') {
+            records = this._parseDelimitedRaw(text, '\t');
+        } else {
+            throw new Error(`Unsupported format: .${ext}`);
+        }
+        if (records.length === 0) throw new Error('No records found in file');
+        // Union of keys across the first few records, to be robust to ragged rows.
+        const columns = [...new Set(records.slice(0, 50).flatMap(r => Object.keys(r)))];
+        return { ext, columns, records };
+    }
+
+    _parseDelimitedRaw(text, delimiter) {
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length < 2) return [];
+        const headers = this._splitCSVLine(lines[0], delimiter).map(h => h.trim());
+        return lines.slice(1).map(line => {
+            const cols = this._splitCSVLine(line, delimiter);
+            const rec = {};
+            headers.forEach((h, i) => { rec[h] = (cols[i] || '').trim(); });
+            return rec;
+        });
+    }
+
+    _parseJSONRaw(text) {
+        const data = JSON.parse(text);
+        const arr = Array.isArray(data) ? data : (data.entries || data.data || []);
+        return arr.filter(e => e && typeof e === 'object');
+    }
+
+    /**
+     * Import already-parsed records using an explicit field mapping. The chosen
+     * text field becomes the indexed `term` (BM25 boosts it 3x); the optional
+     * label field is stored as `source` for display.
+     * @param {object[]} records
+     * @param {{textField: string, labelField?: string}} mapping
+     * @param {string} fileName
+     * @param {object} [metadata]
+     * @returns {Promise<object>} the saved collection
+     */
+    async importRecords(records, mapping, fileName, metadata = {}) {
+        const { textField, labelField } = mapping;
+        if (!textField) throw new Error('No text field selected for indexing');
+
+        const id = metadata.id || `ref-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const normalized = records.map(r => ({
+            collectionId: id,
+            term: String(r[textField] ?? '').trim(),
+            definition: '',
+            context: '',
+            source: labelField ? String(r[labelField] ?? '').trim() : (metadata.name || fileName)
+        })).filter(e => e.term); // drop rows with empty text
+
+        if (normalized.length === 0) {
+            throw new Error(`Field "${textField}" is empty in all rows`);
+        }
+
+        const collection = {
+            id,
+            name: metadata.name || fileName.replace(/\.[^.]+$/, ''),
+            type: metadata.type || 'dictionary',
+            language: metadata.language || '',
+            entryCount: normalized.length,
+            importFormat: 'mapped',
+            textField,
+            labelField: labelField || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            active: true
+        };
+
+        await storage.saveReferenceCollection(collection);
+        await storage.saveReferenceEntries(id, normalized);
+        this._collections = null;
+        return collection;
+    }
+
+    /**
      * List all reference collections (cached)
      * @returns {Promise<Array>}
      */

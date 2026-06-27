@@ -665,8 +665,12 @@ class StorageService {
    * @param {string} id
    */
   async deleteReferenceCollection(id) {
-    await this.deleteReferenceEntries(id);
+    // Delete the collection record FIRST so it disappears immediately and stays
+    // gone even if entry cleanup (potentially hundreds of thousands of rows) is
+    // slow or interrupted. Orphaned entries are harmless -- buildIndex only
+    // reads entries of existing active collections.
     await this._withStore(IDB_STORES.REFERENCE_COLLECTIONS, 'readwrite', (store) => store.delete(id));
+    await this.deleteReferenceEntries(id);
   }
 
   /**
@@ -740,23 +744,29 @@ class StorageService {
    */
   async deleteReferenceEntries(collectionId) {
     const db = await this._initDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readwrite');
-      const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
-      const index = store.index('collectionId');
-      const request = index.openCursor(IDBKeyRange.only(collectionId));
 
-      request.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          cursor.delete();
-          cursor.continue();
-        }
-      };
-
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+    // Collect the primary keys for this collection in one read.
+    const keys = await new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readonly');
+      const index = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES).index('collectionId');
+      const request = index.getAllKeys(IDBKeyRange.only(collectionId));
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
     });
+
+    // Delete in chunked transactions (like saveReferenceEntries) so we never
+    // hold one giant transaction open for hundreds of thousands of rows.
+    const CHUNK_SIZE = 10000;
+    for (let i = 0; i < keys.length; i += CHUNK_SIZE) {
+      const slice = keys.slice(i, i + CHUNK_SIZE);
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORES.REFERENCE_ENTRIES, 'readwrite');
+        const store = tx.objectStore(IDB_STORES.REFERENCE_ENTRIES);
+        for (const key of slice) store.delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
   }
 
   /**

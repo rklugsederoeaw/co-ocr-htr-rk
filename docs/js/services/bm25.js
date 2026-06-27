@@ -18,6 +18,7 @@ class BM25Service {
         this._pendingCallbacks = new Map();
         this._callbackId = 0;
         this._onProgress = null;
+        this._count = 0;
     }
 
     /**
@@ -25,6 +26,13 @@ class BM25Service {
      */
     isReady() {
         return this._ready;
+    }
+
+    /**
+     * Number of entries in the current index (0 if not built)
+     */
+    indexedCount() {
+        return this._ready ? this._count : 0;
     }
 
     /**
@@ -129,6 +137,7 @@ class BM25Service {
         }
         this._ready = false;
         this._building = false;
+        this._count = 0;
         this._rejectAllPending(new Error('BM25 service disposed'));
     }
 
@@ -154,6 +163,7 @@ class BM25Service {
             case 'ready':
                 this._ready = true;
                 this._building = false;
+                this._count = data.count || 0;
                 this._onProgress = null;
                 {
                     const buildCb = this._pendingCallbacks.get('build');

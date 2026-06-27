@@ -67,6 +67,23 @@ class ReferenceUI {
                     <button class="btn btn-sm btn-outline" id="btnBuildIndex">Build Index</button>
                 </div>
             `;
+            // Index status + test search
+            const ready = bm25Service.isReady();
+            const statusText = bm25Service.isBuilding()
+                ? 'Index: building...'
+                : ready
+                    ? `Index: ${bm25Service.indexedCount().toLocaleString()} entries ready`
+                    : 'Index: not built -- click "Build Index"';
+            html += `
+                <div style="padding: 0 var(--space-2) var(--space-2);">
+                    <div class="text-xs text-secondary" id="refIndexStatus" style="margin-bottom: var(--space-1);">${escapeHtml(statusText)}</div>
+                    <div style="display: flex; gap: var(--space-1);">
+                        <input type="text" id="refSearchInput" class="input input-sm" placeholder="Test search the index..." ${ready ? '' : 'disabled'} style="flex: 1; font-size: var(--text-xs);">
+                        <button class="btn btn-sm btn-outline" id="refSearchBtn" ${ready ? '' : 'disabled'}>Search</button>
+                    </div>
+                    <div id="refSearchResults" class="text-xs" style="margin-top: var(--space-1);"></div>
+                </div>
+            `;
             this._container.innerHTML = html;
         }
 
@@ -102,14 +119,79 @@ class ReferenceUI {
             // Delete buttons
             this._container.querySelectorAll('.ref-delete').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
+                    // Capture these BEFORE awaiting: after an await, the event has
+                    // finished dispatching and e.currentTarget is null.
                     const id = e.currentTarget.dataset.id;
-                    if (window.confirm('Delete this reference collection?')) { // eslint-disable-line no-alert
+                    const row = e.currentTarget.closest('.reference-item');
+                    // Use the app's own confirm dialog, not window.confirm: native
+                    // dialogs get suppressed by the browser after repeated use, which
+                    // silently makes deletion a no-op.
+                    const confirmed = await dialogManager.showConfirm(
+                        'Delete reference collection?',
+                        'This removes the collection and all its entries.',
+                        'Delete', 'Cancel', { icon: 'warning' }
+                    );
+                    if (!confirmed) return;
+                    // Remove from the list immediately. Cleaning up the entries of
+                    // a large collection can take a while, but the collection
+                    // record is deleted first, so the UI stays consistent while the
+                    // entry cleanup finishes in the background.
+                    row?.remove();
+                    bm25Service.dispose();
+                    try {
                         await referenceService.deleteCollection(id);
-                        bm25Service.dispose();
-                        this.render();
+                    } catch (error) {
+                        dialogManager.showToast(`Delete failed: ${error.message}`, 'error');
+                        await this.render(); // restore the list if deletion failed
                     }
                 });
             });
+
+            // Test search
+            const searchBtn = getById('refSearchBtn');
+            const searchInput = getById('refSearchInput');
+            if (searchBtn && searchInput) {
+                const run = () => this._handleSearch(searchInput.value);
+                searchBtn.addEventListener('click', run);
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') run();
+                });
+            }
+        }
+    }
+
+    /**
+     * Run a test search against the live BM25 index and render the hits.
+     * @param {string} query
+     */
+    async _handleSearch(query) {
+        const resultsEl = getById('refSearchResults');
+        if (!resultsEl) return;
+        const q = (query || '').trim();
+        if (!q) { resultsEl.innerHTML = ''; return; }
+        if (!bm25Service.isReady()) {
+            resultsEl.innerHTML = '<span class="text-secondary">Build the index first.</span>';
+            return;
+        }
+        resultsEl.innerHTML = '<span class="text-secondary">Searching...</span>';
+        try {
+            const hits = await bm25Service.search(q, 10);
+            if (!hits.length) {
+                resultsEl.innerHTML = '<span class="text-secondary">No matches.</span>';
+                return;
+            }
+            const rows = hits.map((h, i) => {
+                const term = escapeHtml(h.term || '');
+                const def = escapeHtml(h.definition || '');
+                const score = typeof h.score === 'number' ? h.score.toFixed(1) : '';
+                return `<div style="padding: 2px 0; border-bottom: 1px solid var(--border-color);">
+                    <strong>${i + 1}.</strong> ${term}${def ? ' &mdash; ' + def : ''} <span class="text-secondary">(${score})</span>
+                </div>`;
+            }).join('');
+            resultsEl.innerHTML =
+                `<div class="text-secondary" style="margin-bottom: var(--space-1);">${hits.length} hit(s):</div>${rows}`;
+        } catch (error) {
+            resultsEl.innerHTML = `<span style="color: var(--color-error);">Search failed: ${escapeHtml(error.message)}</span>`;
         }
     }
 
@@ -125,7 +207,17 @@ class ReferenceUI {
             if (!file) return;
 
             try {
-                const collection = await referenceService.importFromFile(file);
+                // Parse first to discover the available fields, then let the user
+                // map which one is indexed vs. shown as a label.
+                const { columns } = await referenceService.parseFile(file);
+                const defaults = this._guessFieldDefaults(columns);
+                const mapping = await dialogManager.showFieldMapping(file.name, columns, defaults);
+                if (!mapping) return; // cancelled
+
+                // Re-parse on import (cheap relative to the modal interaction) and
+                // map with the chosen fields.
+                const { records } = await referenceService.parseFile(file);
+                const collection = await referenceService.importRecords(records, mapping, file.name);
                 dialogManager.showToast(
                     `Imported ${collection.entryCount} entries from "${collection.name}"`,
                     'success'
@@ -137,6 +229,26 @@ class ReferenceUI {
             }
         });
         input.click();
+    }
+
+    /**
+     * Pre-select sensible default fields for the import mapping dialog.
+     * @param {string[]} columns
+     * @returns {{text: string, label: string}}
+     */
+    _guessFieldDefaults(columns) {
+        const lower = columns.map(c => c.toLowerCase());
+        const find = (patterns) => {
+            for (const p of patterns) {
+                const i = lower.findIndex(c => p.test(c));
+                if (i >= 0) return columns[i];
+            }
+            return '';
+        };
+        const text = find([/^(full_?text|text|content|body)$/, /^(term|headword|word|incipit)$/, /text|content/])
+            || columns[0] || '';
+        const label = find([/^(label|name|title)$/, /^(.*_)?id$/, /^(source|key|ref)$/]);
+        return { text, label: label === text ? '' : label };
     }
 
     /**
@@ -166,6 +278,9 @@ class ReferenceUI {
                 buildBtn.disabled = false;
                 buildBtn.textContent = 'Build Index';
             }
+            // Re-render so the index status line and the test-search field
+            // reflect the new ready state.
+            await this.render();
         }
     }
 }
