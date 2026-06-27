@@ -212,7 +212,7 @@ describe('ValidationEngine - BM25 Integration', () => {
 
             const context = engine._formatReferenceContext(hits);
 
-            expect(context).toContain('## Reference Data');
+            expect(context).toContain('## REFERENCE DATA');
             expect(context).toContain('"dominus" -> lord');
             expect(context).toContain('"ecclesia" -> church');
             expect(context).toContain('"rex" -> king');
@@ -268,8 +268,9 @@ describe('ValidationEngine - BM25 Integration', () => {
             const hits = [{ term: 'test', definition: 'val', source: 'S' }];
             const context = engine._formatReferenceContext(hits);
 
-            expect(context).toContain('verify uncertain readings');
+            expect(context).toContain('verify or correct uncertain readings');
             expect(context).toContain('Do not assume');
+            expect(context).toContain('cite its Source id');
         });
     });
 
@@ -355,8 +356,9 @@ describe('ValidationEngine - BM25 Integration', () => {
 
             // The validate call should receive enriched text with reference context
             const callArg = llmService.validate.mock.calls[0][0];
-            expect(callArg).toContain('## Reference Data');
+            expect(callArg).toContain('## REFERENCE DATA');
             expect(callArg).toContain('"dominus" -> lord');
+            expect(callArg).toContain('TRANSCRIPTION TO VALIDATE'); // clear section separator
             expect(callArg).toContain('dominus test'); // original text still present
         });
     });

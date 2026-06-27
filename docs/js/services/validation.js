@@ -313,7 +313,7 @@ class ValidationEngine {
      */
     async validateWithLLM(text, customPrompt = '', streamOptions = {}, referenceContext = '') {
         try {
-            const enrichedText = referenceContext ? `${referenceContext}\n\n${text}` : text;
+            const enrichedText = this._buildEnrichedText(referenceContext, text);
             const result = await llmService.validate(enrichedText, { customPrompt, ...streamOptions });
             const validationResult = {
                 confidence: result.confidence,
@@ -349,9 +349,7 @@ class ValidationEngine {
      */
     async validateWithPostprocessing(text, options = {}) {
         try {
-            const enrichedText = options.referenceContext
-                ? `${options.referenceContext}\n\n${text}`
-                : text;
+            const enrichedText = this._buildEnrichedText(options.referenceContext, text);
             const result = await runPostprocessing(enrichedText, {
                 contextDescription: options.contextDescription || '',
                 runStage2: options.runStage2 !== false,
@@ -457,11 +455,18 @@ class ValidationEngine {
     async _retrieveReferenceContext(text, ruleResults) {
 
         const terms = this._extractQueryTerms(text, ruleResults);
-        if (terms.length === 0) return '';
+        if (terms.length === 0) {
+            console.log('[Validation] BM25 retrieval: 0 query terms extracted -> no reference context');
+            return '';
+        }
 
         try {
             const results = await bm25Service.searchMultiple(terms, 5);
             const uniqueHits = this._deduplicateHits(results);
+            const topSources = [...new Set(uniqueHits.slice(0, 5).map(h => h.source || h.collectionId))];
+            console.log(
+                `[Validation] BM25 retrieval: ${terms.length} query terms -> ${uniqueHits.length} unique hits`
+                + (uniqueHits.length ? ` (top sources: ${topSources.join(', ')}; top score ${(uniqueHits[0].score || 0).toFixed(2)})` : ' -- nothing relevant found for this page'));
             return this._formatReferenceContext(uniqueHits, { maxEntries: 30 });
         } catch (error) {
             console.warn('[Validation] BM25 retrieval failed:', error.message);
@@ -556,21 +561,43 @@ class ValidationEngine {
             bySource[source].push(hit);
         }
 
-        let context = '## Reference Data\n\n';
-        context += 'The following entries from reference works may be relevant.\n';
-        context += 'Use them to verify uncertain readings where applicable.\n';
-        context += 'Do not assume every word must match a reference entry.\n\n';
+        let context = '## REFERENCE DATA (external context -- consult, do NOT treat as part of the transcription)\n\n';
+        context += 'The following passages were retrieved from reference works and MAY be relevant.\n';
+        context += 'Use them to verify or correct uncertain readings where applicable.\n';
+        context += 'Do not assume every word must match a reference entry.\n';
+        context += 'When a passage supports or corrects a reading, cite its Source id in your explanation (e.g. "per Source 004141").\n\n';
 
         for (const [source, sourceHits] of Object.entries(bySource)) {
             context += `Source: ${source}\n`;
             for (const hit of sourceHits) {
-                context += `- "${hit.term}" -> ${hit.definition}\n`;
+                // Dictionary entries have a separate definition ("term -> meaning");
+                // full-text corpora index the passage itself with no definition, so
+                // list it plainly instead of an empty "text -> " arrow.
+                context += hit.definition
+                    ? `- "${hit.term}" -> ${hit.definition}\n`
+                    : `- ${hit.term}\n`;
             }
             context += '\n';
         }
 
         context += '---\n';
         return context;
+    }
+
+    /**
+     * Combine retrieved reference context with the transcription so the LLM
+     * treats them as separate sections. Without a clear marker the reference
+     * block (prepended to the text) reads as part of the transcription, so the
+     * model neither uses it as reference nor counts line numbers correctly.
+     * @param {string} referenceContext
+     * @param {string} text
+     * @returns {string}
+     */
+    _buildEnrichedText(referenceContext, text) {
+        if (!referenceContext) return text;
+        return `${referenceContext}\n`
+            + '=== TRANSCRIPTION TO VALIDATE (line numbers refer to THIS section only) ===\n\n'
+            + text;
     }
 
     /**
