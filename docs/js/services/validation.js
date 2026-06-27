@@ -313,7 +313,6 @@ class ValidationEngine {
      */
     async validateWithLLM(text, customPrompt = '', streamOptions = {}, referenceContext = '') {
         try {
-            // Prepend reference context from BM25 retrieval when available
             const enrichedText = referenceContext ? `${referenceContext}\n\n${text}` : text;
             const result = await llmService.validate(enrichedText, { customPrompt, ...streamOptions });
             const validationResult = {
@@ -350,7 +349,6 @@ class ValidationEngine {
      */
     async validateWithPostprocessing(text, options = {}) {
         try {
-            // Prepend reference context from BM25 retrieval when available
             const enrichedText = options.referenceContext
                 ? `${options.referenceContext}\n\n${text}`
                 : text;
@@ -365,7 +363,7 @@ class ValidationEngine {
             // If orchestrator signals both-stage fallback, use single-call review
             if (result.fallbackUsed) {
                 console.log('[Validation] Postprocessing failed, falling back to single LLM Review');
-                return await this.validateWithLLM(text, options.customPrompt || '');
+                return await this.validateWithLLM(text, options.customPrompt || '', options.streamOptions || {}, options.referenceContext || '');
             }
 
             return {
@@ -377,7 +375,7 @@ class ValidationEngine {
             };
         } catch (error) {
             console.error('[Validation] Postprocessing error, falling back:', error.message);
-            return await this.validateWithLLM(text, options.customPrompt || '');
+            return await this.validateWithLLM(text, options.customPrompt || '', options.streamOptions || {}, options.referenceContext || '');
         }
     }
 
@@ -401,6 +399,7 @@ class ValidationEngine {
             checkStats = true,
             checkArtifacts = true,
             includeLLM = true,
+            includeReferenceData = true,
             customPrompt = '',
             stream,
             onThinkingChunk
@@ -413,9 +412,8 @@ class ValidationEngine {
             artifacts: checkArtifacts
         });
 
-        // BM25 reference retrieval for prompt enrichment
         let referenceContext = '';
-        if (includeLLM && bm25Service.isReady()) {
+        if (includeLLM && includeReferenceData && bm25Service.isReady()) {
             referenceContext = await this._retrieveReferenceContext(text, ruleResults);
         }
 
@@ -457,7 +455,6 @@ class ValidationEngine {
      * @returns {Promise<string>} Formatted reference context for prompt
      */
     async _retrieveReferenceContext(text, ruleResults) {
-        if (!bm25Service.isReady()) return '';
 
         const terms = this._extractQueryTerms(text, ruleResults);
         if (terms.length === 0) return '';

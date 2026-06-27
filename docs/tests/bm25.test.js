@@ -41,7 +41,6 @@ describe('BM25Service', () => {
     beforeEach(() => {
         service = new BM25Service();
 
-        // Create mock worker instance that captures onmessage handler
         mockWorkerInstance = {
             postMessage: vi.fn(),
             terminate: vi.fn(),
@@ -49,8 +48,9 @@ describe('BM25Service', () => {
             onerror: null
         };
 
-        // Mock Worker constructor
-        vi.stubGlobal('Worker', vi.fn(() => mockWorkerInstance));
+        vi.stubGlobal('Worker', function MockWorker() {
+            return mockWorkerInstance;
+        });
     });
 
     /**
@@ -113,13 +113,12 @@ describe('BM25Service', () => {
             );
         });
 
-        it('should create worker with module type', async () => {
+        it('should create worker and send build message', async () => {
             service.buildIndex();
             await flushMicrotasks();
 
-            expect(Worker).toHaveBeenCalledWith(
-                expect.any(URL),
-                expect.objectContaining({ type: 'module' })
+            expect(mockWorkerInstance.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({ type: 'build' })
             );
         });
     });
@@ -145,9 +144,14 @@ describe('BM25Service', () => {
             // Start search
             const searchPromise = service.search('dominus', 5);
 
-            // Simulate worker results
+            // Extract the _id sent to the worker
+            const searchCall = mockWorkerInstance.postMessage.mock.calls.find(c => c[0].type === 'search');
+            const searchId = searchCall[0]._id;
+
+            // Simulate worker results with matching _id
             simulateWorkerMessage({
                 type: 'results',
+                _id: searchId,
                 query: 'dominus',
                 hits: [{ term: 'dominus', definition: 'lord', score: 5.2 }]
             });
@@ -167,9 +171,14 @@ describe('BM25Service', () => {
             // Search multiple
             const searchPromise = service.searchMultiple(['dominus', 'ecclesia'], 3);
 
-            // Simulate worker results
+            // Extract the _id sent to the worker
+            const multiCall = mockWorkerInstance.postMessage.mock.calls.find(c => c[0].type === 'searchMultiple');
+            const multiId = multiCall[0]._id;
+
+            // Simulate worker results with matching _id
             simulateWorkerMessage({
                 type: 'multiResults',
+                _id: multiId,
                 results: {
                     dominus: [{ term: 'dominus', definition: 'lord', score: 5 }],
                     ecclesia: [{ term: 'ecclesia', definition: 'church', score: 4 }]
@@ -229,6 +238,22 @@ describe('BM25Service', () => {
             // Should not throw
             service.dispose();
             expect(service.isReady()).toBe(false);
+        });
+
+        it('should reject pending search promises on dispose', async () => {
+            // Build first
+            const buildPromise = service.buildIndex();
+            await flushMicrotasks();
+            simulateWorkerMessage({ type: 'ready', count: 2, duration: 10 });
+            await buildPromise;
+
+            // Start search without resolving
+            const searchPromise = service.search('dominus', 5);
+
+            // Dispose while search is pending
+            service.dispose();
+
+            await expect(searchPromise).rejects.toThrow('disposed');
         });
     });
 });

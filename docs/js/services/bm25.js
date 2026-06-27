@@ -76,6 +76,7 @@ class BM25Service {
             this._worker.onerror = (e) => {
                 console.error('[BM25] Worker error:', e.message);
                 this._building = false;
+                this._rejectAllPending(new Error(e.message || 'Worker error'));
             };
         }
 
@@ -96,8 +97,8 @@ class BM25Service {
         if (!this._ready || !this._worker) return [];
 
         const id = ++this._callbackId;
-        return new Promise((resolve) => {
-            this._pendingCallbacks.set(`search_${id}`, { resolve });
+        return new Promise((resolve, reject) => {
+            this._pendingCallbacks.set(`search_${id}`, { resolve, reject });
             this._worker.postMessage({ type: 'search', query, topK, _id: id });
         });
     }
@@ -112,8 +113,8 @@ class BM25Service {
         if (!this._ready || !this._worker) return {};
 
         const id = ++this._callbackId;
-        return new Promise((resolve) => {
-            this._pendingCallbacks.set(`searchMultiple_${id}`, { resolve });
+        return new Promise((resolve, reject) => {
+            this._pendingCallbacks.set(`searchMultiple_${id}`, { resolve, reject });
             this._worker.postMessage({ type: 'searchMultiple', queries, topK, _id: id });
         });
     }
@@ -123,12 +124,21 @@ class BM25Service {
      */
     dispose() {
         if (this._worker) {
-            this._worker.postMessage({ type: 'clear' });
             this._worker.terminate();
             this._worker = null;
         }
         this._ready = false;
         this._building = false;
+        this._rejectAllPending(new Error('BM25 service disposed'));
+    }
+
+    /**
+     * Reject all pending callbacks and clear the map
+     */
+    _rejectAllPending(error) {
+        for (const [, cb] of this._pendingCallbacks) {
+            if (cb.reject) cb.reject(error);
+        }
         this._pendingCallbacks.clear();
     }
 
@@ -154,37 +164,30 @@ class BM25Service {
                 }
                 break;
 
-            case 'results':
-                // Resolve the first pending search callback
-                for (const [key, cb] of this._pendingCallbacks) {
-                    if (key.startsWith('search_')) {
-                        cb.resolve(data.hits);
-                        this._pendingCallbacks.delete(key);
-                        break;
-                    }
+            case 'results': {
+                const searchKey = `search_${data._id}`;
+                const searchCb = this._pendingCallbacks.get(searchKey);
+                if (searchCb) {
+                    searchCb.resolve(data.hits);
+                    this._pendingCallbacks.delete(searchKey);
                 }
                 break;
+            }
 
-            case 'multiResults':
-                for (const [key, cb] of this._pendingCallbacks) {
-                    if (key.startsWith('searchMultiple_')) {
-                        cb.resolve(data.results);
-                        this._pendingCallbacks.delete(key);
-                        break;
-                    }
+            case 'multiResults': {
+                const multiKey = `searchMultiple_${data._id}`;
+                const multiCb = this._pendingCallbacks.get(multiKey);
+                if (multiCb) {
+                    multiCb.resolve(data.results);
+                    this._pendingCallbacks.delete(multiKey);
                 }
                 break;
+            }
 
             case 'error':
                 console.error('[BM25] Worker error:', data.message);
-                if (this._building) {
-                    const buildCb = this._pendingCallbacks.get('build');
-                    if (buildCb) {
-                        buildCb.reject(new Error(data.message));
-                        this._pendingCallbacks.delete('build');
-                    }
-                    this._building = false;
-                }
+                this._building = false;
+                this._rejectAllPending(new Error(data.message));
                 break;
         }
     }

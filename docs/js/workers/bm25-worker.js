@@ -65,7 +65,7 @@ self.onmessage = async ({ data }) => {
                     fuzzy: data.options?.fuzzy ?? 0.2,
                     prefix: data.options?.prefix ?? true
                 });
-                self.postMessage({ type: 'results', query: data.query, hits: results });
+                self.postMessage({ type: 'results', _id: data._id, query: data.query, hits: results });
                 break;
             }
 
@@ -82,7 +82,7 @@ self.onmessage = async ({ data }) => {
                         prefix: data.options?.prefix ?? true
                     });
                 }
-                self.postMessage({ type: 'multiResults', results: multiResults });
+                self.postMessage({ type: 'multiResults', _id: data._id, results: multiResults });
                 break;
             }
 
